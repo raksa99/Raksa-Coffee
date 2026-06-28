@@ -955,7 +955,7 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                           : Image.network(
                               Uri.https('api.qrserver.com', '/v1/create-qr-code/', {
                                 'size': '250x250',
-                                'data': _dynamicQrString ?? 'https://pay.ababank.com/oRF8/837e5qzv',
+                                'data': _dynamicQrString ?? 'https://link.payway.com.kh/ABAPAYPd468685R',
                               }).toString(),
                               width: 140,
                               height: 140,
