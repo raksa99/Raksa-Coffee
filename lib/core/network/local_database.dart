@@ -7,12 +7,14 @@ class LocalDatabase {
   static const String _productsBoxName = 'pos_products';
   static const String _queuedOrdersBoxName = 'pos_queued_orders';
   static const String _salesBoxName = 'pos_sales';
+  static const String _settingsBoxName = 'pos_settings';
 
   static Future<void> init() async {
     await Hive.initFlutter();
     await Hive.openBox(_productsBoxName);
     await Hive.openBox(_queuedOrdersBoxName);
     await Hive.openBox(_salesBoxName);
+    await Hive.openBox(_settingsBoxName);
   }
 
   // --- PRODUCTS CACHE ---
@@ -69,5 +71,17 @@ class LocalDatabase {
     await Hive.box(_productsBoxName).clear();
     await Hive.box(_queuedOrdersBoxName).clear();
     await Hive.box(_salesBoxName).clear();
+    await Hive.box(_settingsBoxName).clear();
+  }
+
+  // --- PERSISTENT SETTINGS ---
+  static String getSetting(String key, String defaultValue) {
+    final box = Hive.box(_settingsBoxName);
+    return box.get(key, defaultValue: defaultValue) as String;
+  }
+
+  static Future<void> saveSetting(String key, String value) async {
+    final box = Hive.box(_settingsBoxName);
+    await box.put(key, value);
   }
 }
