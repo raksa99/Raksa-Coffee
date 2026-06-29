@@ -14,6 +14,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../../../../core/network/local_database.dart';
+import '../../../../core/utils/khqr_generator.dart';
 
 class CheckoutDialog extends StatefulWidget {
   final Order order;
@@ -29,7 +30,8 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
   double _amountPaid = 0.0;
   String _customCashInput = '';
 
-  // Dynamic ABA QR & API Settings
+  // Dynamic ABA QR / Bakong API Settings
+  String _qrProvider = 'aba'; // 'aba' or 'bakong'
   bool _showApiSettings = false;
   bool _isLoadingQr = false;
   String? _dynamicQrString;
@@ -37,9 +39,15 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
   String _teachConcatString = '';
   String _teachHash = '';
 
+  // ABA Controllers
   final _merchantIdController = TextEditingController();
   final _apiKeyController = TextEditingController();
   final _apiSecretController = TextEditingController();
+
+  // Bakong Controllers
+  final _bakongAccountIdController = TextEditingController();
+  final _bakongMerchantNameController = TextEditingController();
+  final _bakongMerchantCityController = TextEditingController();
 
   @override
   void initState() {
@@ -52,13 +60,16 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
     _apiKeyController.text = LocalDatabase.getSetting('aba_api_key', '');
     _apiSecretController.text = LocalDatabase.getSetting('aba_api_secret', '');
 
+    _bakongAccountIdController.text = LocalDatabase.getSetting('bakong_account_id', 'raksa_coffee@usd');
+    _bakongMerchantNameController.text = LocalDatabase.getSetting('bakong_merchant_name', 'Raksa Coffee');
+    _bakongMerchantCityController.text = LocalDatabase.getSetting('bakong_merchant_city', 'Phnom Penh');
+    
+    _qrProvider = LocalDatabase.getSetting('qr_provider', 'aba');
+
     // Auto-fetch dynamic QR if credentials exist
-    if (_merchantIdController.text.isNotEmpty && _apiSecretController.text.isNotEmpty) {
-      // Small post-frame callback delay to ensure context is available
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _generateDynamicQrCode();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _generateDynamicQrCode();
+    });
   }
 
   @override
@@ -66,10 +77,63 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
     _merchantIdController.dispose();
     _apiKeyController.dispose();
     _apiSecretController.dispose();
+    _bakongAccountIdController.dispose();
+    _bakongMerchantNameController.dispose();
+    _bakongMerchantCityController.dispose();
     super.dispose();
   }
 
   Future<void> _generateDynamicQrCode() async {
+    if (_qrProvider == 'bakong') {
+      final accountId = _bakongAccountIdController.text.trim();
+      final merchantName = _bakongMerchantNameController.text.trim();
+      final merchantCity = _bakongMerchantCityController.text.trim();
+
+      if (accountId.isEmpty || merchantName.isEmpty) {
+        setState(() {
+          _dynamicQrString = null;
+          _qrError = 'Please enter Bakong Account ID and Merchant Name';
+        });
+        return;
+      }
+
+      setState(() {
+        _isLoadingQr = true;
+        _qrError = '';
+      });
+
+      try {
+        final amount = widget.order.total;
+        final orderNumber = 'pos_${widget.order.orderNumber}';
+
+        // 1. Generate standard EMVCo KHQR payload locally
+        final qrPayload = KhqrGenerator.generate(
+          accountId: accountId,
+          merchantName: merchantName,
+          merchantCity: merchantCity,
+          amount: amount,
+          orderNumber: orderNumber,
+        );
+
+        setState(() {
+          _dynamicQrString = qrPayload;
+          _teachConcatString = 'EMVCo tags assembled locally';
+          _teachHash = 'CRC16 CCITT Computed: ${qrPayload.substring(qrPayload.length - 4)}';
+          _isLoadingQr = false;
+        });
+      } catch (e) {
+        setState(() {
+          _qrError = 'Failed to generate KHQR locally: $e';
+          _isLoadingQr = false;
+        });
+      }
+    } else {
+      // Call ABA PayWay endpoint
+      await _fetchAbaPayWayQrCode();
+    }
+  }
+
+  Future<void> _fetchAbaPayWayQrCode() async {
     final merchantId = _merchantIdController.text.trim();
     final apiKey = _apiKeyController.text.trim();
     final apiSecret = _apiSecretController.text.trim();
@@ -89,7 +153,6 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
 
     try {
       final reqTime = DateFormat('yyyyMMddHHmmss').format(DateTime.now());
-      // Unique transaction ID using timestamp
       final tranId = 'pos_${widget.order.orderNumber}_${DateTime.now().millisecondsSinceEpoch % 10000}';
       final amount = widget.order.total.toStringAsFixed(2);
       const currency = 'USD';
@@ -117,7 +180,7 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
         url,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey', // Optional API key header in standard OAuth
+          'Authorization': 'Bearer $apiKey',
         },
         body: jsonEncode({
           'req_time': reqTime,
@@ -755,7 +818,7 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _showApiSettings ? 'ABA PayWay Settings' : 'scanToPay'.tr(context),
+                _showApiSettings ? 'Payment Settings' : 'scanToPay'.tr(context),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               ),
               TextButton.icon(
@@ -769,7 +832,7 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                   size: 16,
                 ),
                 label: Text(
-                  _showApiSettings ? 'Show QR' : 'ABA Sandbox API',
+                  _showApiSettings ? 'Show QR' : 'API Settings',
                   style: const TextStyle(fontSize: 12),
                 ),
               ),
@@ -778,6 +841,82 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
           const SizedBox(height: 8),
 
           if (_showApiSettings) ...[
+            // Segmented Provider Selector
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1A18) : const Color(0xFFF3EFE9),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _qrProvider = 'aba';
+                          LocalDatabase.saveSetting('qr_provider', 'aba');
+                          _teachConcatString = '';
+                          _teachHash = '';
+                        });
+                        _generateDynamicQrCode();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _qrProvider == 'aba'
+                              ? theme.colorScheme.primary
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'ABA PayWay API',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _qrProvider == 'aba' ? Colors.white : theme.textTheme.bodyMedium?.color,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _qrProvider = 'bakong';
+                          LocalDatabase.saveSetting('qr_provider', 'bakong');
+                          _teachConcatString = '';
+                          _teachHash = '';
+                        });
+                        _generateDynamicQrCode();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _qrProvider == 'bakong'
+                              ? theme.colorScheme.primary
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Bakong KHQR',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _qrProvider == 'bakong' ? Colors.white : theme.textTheme.bodyMedium?.color,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
             // API Credentials Fields
             Container(
               padding: const EdgeInsets.all(12),
@@ -786,69 +925,129 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextField(
-                    controller: _merchantIdController,
-                    decoration: const InputDecoration(
-                      labelText: 'Merchant ID',
-                      labelStyle: TextStyle(fontSize: 12),
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    ),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _apiKeyController,
-                    decoration: const InputDecoration(
-                      labelText: 'API Key (Public)',
-                      labelStyle: TextStyle(fontSize: 12),
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    ),
-                    obscureText: true,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _apiSecretController,
-                    decoration: const InputDecoration(
-                      labelText: 'API Secret (Private)',
-                      labelStyle: TextStyle(fontSize: 12),
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    ),
-                    obscureText: true,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () async {
-                      // Save to Hive persistent settings
-                      await LocalDatabase.saveSetting('aba_merchant_id', _merchantIdController.text.trim());
-                      await LocalDatabase.saveSetting('aba_api_key', _apiKeyController.text.trim());
-                      await LocalDatabase.saveSetting('aba_api_secret', _apiSecretController.text.trim());
-                      
-                      _generateDynamicQrCode();
-                      
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('ABA Sandbox settings saved!'),
-                          duration: Duration(seconds: 1),
+              child: _qrProvider == 'aba'
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _merchantIdController,
+                          decoration: const InputDecoration(
+                            labelText: 'Merchant ID',
+                            labelStyle: TextStyle(fontSize: 12),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                          style: const TextStyle(fontSize: 12),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _apiKeyController,
+                          decoration: const InputDecoration(
+                            labelText: 'API Key (Public)',
+                            labelStyle: TextStyle(fontSize: 12),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                          obscureText: true,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _apiSecretController,
+                          decoration: const InputDecoration(
+                            labelText: 'API Secret (Private)',
+                            labelStyle: TextStyle(fontSize: 12),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                          obscureText: true,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await LocalDatabase.saveSetting('aba_merchant_id', _merchantIdController.text.trim());
+                            await LocalDatabase.saveSetting('aba_api_key', _apiKeyController.text.trim());
+                            await LocalDatabase.saveSetting('aba_api_secret', _apiSecretController.text.trim());
+                            
+                            _generateDynamicQrCode();
+                            
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('ABA PayWay Sandbox credentials saved!'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          child: const Text('Save & Fetch Dynamic QR'),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _bakongAccountIdController,
+                          decoration: const InputDecoration(
+                            labelText: 'Bakong Account ID',
+                            labelStyle: TextStyle(fontSize: 12),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _bakongMerchantNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Merchant Name',
+                            labelStyle: TextStyle(fontSize: 12),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _bakongMerchantCityController,
+                          decoration: const InputDecoration(
+                            labelText: 'Merchant City',
+                            labelStyle: TextStyle(fontSize: 12),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await LocalDatabase.saveSetting('bakong_account_id', _bakongAccountIdController.text.trim());
+                            await LocalDatabase.saveSetting('bakong_merchant_name', _bakongMerchantNameController.text.trim());
+                            await LocalDatabase.saveSetting('bakong_merchant_city', _bakongMerchantCityController.text.trim());
+                            
+                            _generateDynamicQrCode();
+                            
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Bakong KHQR details saved!'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          child: const Text('Save & Compile Local KHQR'),
+                        ),
+                      ],
                     ),
-                    child: const Text('Save & Fetch Dynamic QR'),
-                  ),
-                ],
-              ),
             ),
             if (_teachConcatString.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -861,18 +1060,24 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      '📚 How Signature is Signed:',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.blueGrey),
+                    Text(
+                      _qrProvider == 'aba'
+                          ? '📚 How Signature is Signed (ABA PayWay):'
+                          : '📚 How EMVCo KHQR String is Compiled:',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.blueGrey),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '1. Parameter Concat:\n"$_teachConcatString"',
+                      _qrProvider == 'aba'
+                          ? '1. Parameter Concat:\n"$_teachConcatString"'
+                          : '1. Local Tag-Length-Value Blocks:\n"$_teachConcatString"',
                       style: const TextStyle(fontFamily: 'Courier', fontSize: 9),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '2. HMAC-SHA512 Base64 Hash:\n"$_teachHash"',
+                      _qrProvider == 'aba'
+                          ? '2. HMAC-SHA512 Base64 Hash:\n"$_teachHash"'
+                          : '2. Local Checksum:\n"$_teachHash"',
                       style: const TextStyle(fontFamily: 'Courier', fontSize: 9, color: Colors.green),
                     ),
                   ],
@@ -918,9 +1123,9 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                           ),
                         ),
                       ),
-                      const Text(
-                        'ABA Mobile',
-                        style: TextStyle(
+                      Text(
+                        _qrProvider == 'aba' ? 'ABA Mobile' : 'BAKONG KHQR',
+                        style: const TextStyle(
                           color: Color(0xFF005A70),
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
@@ -1020,7 +1225,9 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Demo Mode: Tap gear settings icon to configure ABA Sandbox for dynamic generation.',
+                        _qrProvider == 'aba'
+                            ? 'Demo Mode: Tap settings icon to configure ABA Sandbox credentials.'
+                            : 'Demo Mode: Tap settings icon to configure Bakong account details.',
                         style: TextStyle(color: isDark ? Colors.blue[200] : Colors.blue[800], fontSize: 10),
                       ),
                     ),
@@ -1036,14 +1243,16 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                   color: Colors.green.withAlpha(20),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.check_circle_outline, size: 14, color: Colors.green),
-                    SizedBox(width: 8),
+                    const Icon(Icons.check_circle_outline, size: 14, color: Colors.green),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Live Dynamic KHQR Code generated from ABA Sandbox API successfully!',
-                        style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
+                        _qrProvider == 'aba'
+                            ? 'Live Dynamic KHQR Code generated from ABA Sandbox API successfully!'
+                            : 'Live Dynamic KHQR Code generated locally via EMVCo compiler successfully!',
+                        style: const TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
