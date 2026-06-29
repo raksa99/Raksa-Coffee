@@ -56,25 +56,6 @@ class _PosDashboardState extends State<PosDashboard> {
                 fontFamily: 'Outfit',
               ),
             ),
-            const SizedBox(width: 12),
-            // Offline indicators
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.green.withAlpha(26),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.wifi, size: 12, color: Colors.green),
-                  const SizedBox(width: 4),
-                  Text(
-                    'offlineCache'.tr(context),
-                    style: const TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
         bottom: isMobile
