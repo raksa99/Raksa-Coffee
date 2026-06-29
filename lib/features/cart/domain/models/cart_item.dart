@@ -60,18 +60,25 @@ class CartItem extends Equatable {
         'notes': notes,
       };
 
-  factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
-        id: json['id'] as String,
-        product: Product.fromJson(json['product'] as Map<String, dynamic>),
-        quantity: json['quantity'] as int? ?? 1,
-        selectedModifiers: (json['selectedModifiers'] as Map<String, dynamic>).map(
-          (key, value) => MapEntry(
-            key,
-            (value as List<dynamic>)
-                .map((e) => ModifierOption.fromJson(e as Map<String, dynamic>))
-                .toList(),
-          ),
-        ),
-        notes: json['notes'] as String? ?? '',
-      );
+  factory CartItem.fromJson(Map<String, dynamic> json) {
+    final rawModifiers = json['selectedModifiers'];
+    Map<String, List<ModifierOption>> parsedModifiers = {};
+    if (rawModifiers is Map) {
+      rawModifiers.forEach((key, value) {
+        if (value is List) {
+          parsedModifiers[key.toString()] = value
+              .map((e) => ModifierOption.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+        }
+      });
+    }
+
+    return CartItem(
+      id: json['id'] as String? ?? '',
+      product: Product.fromJson(Map<String, dynamic>.from(json['product'] as Map)),
+      quantity: json['quantity'] as int? ?? 1,
+      selectedModifiers: parsedModifiers,
+      notes: json['notes'] as String? ?? '',
+    );
+  }
 }
