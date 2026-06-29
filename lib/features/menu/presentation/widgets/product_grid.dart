@@ -189,35 +189,180 @@ class ProductGrid extends StatelessWidget {
   }
 
   void _showDeleteConfirmation(BuildContext context, Product product) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Delete Menu Item'),
-          content: Text('Are you sure you want to delete "${product.name}"? This will permanently remove it from both local storage and the Supabase cloud database.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                context.read<MenuBloc>().add(DeleteProduct(product.id));
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Product "${product.name}" deleted.'),
-                    backgroundColor: Colors.red,
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 10,
+          backgroundColor: isDark ? const Color(0xFF1C1816) : Colors.white,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Circular warning icon
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.red.withAlpha(24),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.redAccent,
+                      size: 30,
+                    ),
                   ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+                  const SizedBox(height: 16),
+
+                  // Title
+                  Text(
+                    'deleteMenuItem'.tr(context),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF2C1B14),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Description
+                  Text(
+                    'confirmDelete'.tr(context),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isDark ? const Color(0xFFA5968E) : const Color(0xFF705D53),
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Product Preview Card (Visual confirmation)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF26211F) : const Color(0xFFF8F5F0),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF38312E) : const Color(0xFFEADFD3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        if (product.imageUrl != null && product.imageUrl!.isNotEmpty)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              product.imageUrl!,
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 48,
+                                height: 48,
+                                color: isDark ? const Color(0xFF38312E) : const Color(0xFFEADFD3),
+                                child: const Icon(Icons.image, size: 20),
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF38312E) : const Color(0xFFEADFD3),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.local_cafe_outlined, size: 20),
+                          ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.name,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                product.category,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.secondary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Actions buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF38312E) : const Color(0xFFEADFD3),
+                            ),
+                          ),
+                          child: Text(
+                            'cancel'.tr(context),
+                            style: TextStyle(
+                              color: isDark ? const Color(0xFFA5968E) : const Color(0xFF705D53),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            context.read<MenuBloc>().add(DeleteProduct(product.id));
+                            Navigator.pop(dialogContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text('delete'.tr(context)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              child: const Text('Delete'),
             ),
-          ],
+          ),
         );
       },
     );

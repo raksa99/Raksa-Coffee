@@ -79,7 +79,10 @@ class AppLocalizations {
       "cancel": "Cancel",
       "hold": "Hold",
       "customDiscount": "Custom Discount",
-      "apply": "Apply"
+      "apply": "Apply",
+      "deleteMenuItem": "Delete Menu Item",
+      "confirmDelete": "Are you sure you want to delete this item? This will permanently remove it from local storage and the Supabase cloud database.",
+      "delete": "Delete"
     },
     'km': {
       "appTitle": "កាហ្វេ រក្សា ភីអូអេស",
@@ -149,7 +152,10 @@ class AppLocalizations {
       "cancel": "បោះបង់",
       "hold": "រក្សាទុក",
       "customDiscount": "ការបញ្ចុះតម្លៃពិសេស",
-      "apply": "អនុវត្ត"
+      "apply": "អនុវត្ត",
+      "deleteMenuItem": "លុបមុខទំនិញពីបញ្ជី",
+      "confirmDelete": "តើអ្នកប្រាកដជាចង់លុបមុខទំនិញនេះមែនទេ? វានឹងត្រូវលុបចេញពីម៉ាស៊ីន POS និងគណនី Supabase ជារៀងរហូត។",
+      "delete": "លុបចោល"
     }
   };
 
