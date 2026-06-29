@@ -82,7 +82,8 @@ class AppLocalizations {
       "apply": "Apply",
       "deleteMenuItem": "Delete Menu Item",
       "confirmDelete": "Are you sure you want to delete this item? This will permanently remove it from local storage and the Supabase cloud database.",
-      "delete": "Delete"
+      "delete": "Delete",
+      "more": "Menu"
     },
     'km': {
       "appTitle": "កាហ្វេ រក្សា ភីអូអេស",
@@ -155,7 +156,8 @@ class AppLocalizations {
       "apply": "អនុវត្ត",
       "deleteMenuItem": "លុបមុខទំនិញពីបញ្ជី",
       "confirmDelete": "តើអ្នកប្រាកដជាចង់លុបមុខទំនិញនេះមែនទេ? វានឹងត្រូវលុបចេញពីម៉ាស៊ីន POS និងគណនី Supabase ជារៀងរហូត។",
-      "delete": "លុបចោល"
+      "delete": "លុបចោល",
+      "more": "មុខងារ"
     }
   };
 
