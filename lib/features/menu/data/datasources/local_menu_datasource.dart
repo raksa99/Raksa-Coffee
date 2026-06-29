@@ -1,4 +1,5 @@
 import '../../../../core/network/local_database.dart';
+import '../../../../core/network/supabase_service.dart';
 import '../../domain/models/modifier.dart';
 import '../../domain/models/product.dart';
 
@@ -272,10 +273,26 @@ class LocalMenuDatasource {
   ];
 
   Future<List<Product>> getProducts() async {
+    // 1. Try pulling from Supabase first if configured
+    if (SupabaseService.isConfigured) {
+      final cloudProducts = await SupabaseService.pullProducts();
+      if (cloudProducts.isNotEmpty) {
+        return cloudProducts;
+      }
+    }
+
+    // 2. Local fallback
     final cached = LocalDatabase.getProducts();
     // Upgrade cache automatically if it holds the older format or lacks new seed items
     if (cached.isEmpty || cached.any((p) => p.imageUrl == null) || !cached.any((p) => p.id == 'p_water')) {
       await LocalDatabase.saveProducts(_defaultProducts);
+      
+      // Seed default products to Supabase so it starts with initial menu
+      if (SupabaseService.isConfigured) {
+        for (var p in _defaultProducts) {
+          await SupabaseService.pushProduct(p);
+        }
+      }
       return _defaultProducts;
     }
     return cached;

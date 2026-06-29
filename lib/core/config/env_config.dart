@@ -18,4 +18,10 @@ class EnvConfig {
   // ==========================================
   // Active QR provider: 'bakong' or 'aba'
   static const String defaultQrProvider = 'bakong';
+
+  // ==========================================
+  // SUPABASE CONFIGURATIONS
+  // ==========================================
+  static const String supabaseUrl = ''; // Enter your Supabase project URL here
+  static const String supabaseAnonKey = ''; // Enter your Supabase Anon Key here
 }

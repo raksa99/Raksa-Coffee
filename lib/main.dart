@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/network/local_database.dart';
+import 'core/network/supabase_service.dart';
 import 'core/theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
 import 'features/cart/presentation/bloc/cart_bloc.dart';
@@ -17,6 +18,10 @@ void main() async {
   
   // Initialize Local Hive Databases
   await LocalDatabase.init();
+
+  // Initialize Supabase Cloud Sync
+  await SupabaseService.init();
+  SupabaseService.syncOfflineSales(); // Run offline sync in background
 
   runApp(const CoffeePOSApp());
 }

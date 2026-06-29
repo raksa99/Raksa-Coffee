@@ -45,6 +45,7 @@ dependencies:
   crypto: ^3.0.3
   http: ^1.2.2
   khqr_generator: ^0.0.8
+  supabase_flutter: ^2.15.0
 
 dev_dependencies:
   flutter_test:

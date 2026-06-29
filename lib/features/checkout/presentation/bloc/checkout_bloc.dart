@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/network/local_database.dart';
+import '../../../../core/network/supabase_service.dart';
 import '../../domain/models/order.dart';
 import 'checkout_event.dart';
 import 'checkout_state.dart';
@@ -26,6 +27,11 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
       // Save to local database (sales history)
       await LocalDatabase.saveSale(completedOrder);
+
+      // Push to Supabase in the background if configured
+      if (SupabaseService.isConfigured) {
+        SupabaseService.uploadOrder(completedOrder);
+      }
 
       emit(CheckoutSuccess(completedOrder));
     } catch (e) {
