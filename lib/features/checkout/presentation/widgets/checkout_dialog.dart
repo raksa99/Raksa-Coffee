@@ -13,8 +13,8 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import '../../../../core/network/local_database.dart';
 import '../../../../core/utils/khqr_generator.dart';
+import '../../../../core/config/env_config.dart';
 
 class CheckoutDialog extends StatefulWidget {
   final Order order;
@@ -30,21 +30,11 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
   double _amountPaid = 0.0;
   String _customCashInput = '';
 
-  // Dynamic ABA QR / Bakong API Settings
-  String _qrProvider = 'aba'; // 'aba' or 'bakong'
+  // Dynamic ABA QR / Bakong API Settings (loaded from static EnvConfig)
+  final String _qrProvider = EnvConfig.defaultQrProvider;
   bool _isLoadingQr = false;
   String? _dynamicQrString;
   String _qrError = '';
-
-  // ABA Controllers
-  final _merchantIdController = TextEditingController();
-  final _apiKeyController = TextEditingController();
-  final _apiSecretController = TextEditingController();
-
-  // Bakong Controllers
-  final _bakongAccountIdController = TextEditingController();
-  final _bakongMerchantNameController = TextEditingController();
-  final _bakongMerchantCityController = TextEditingController();
 
   @override
   void initState() {
@@ -52,18 +42,7 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
     // Default cash amount paid is the exact total
     _amountPaid = widget.order.total;
 
-    // Load credentials from Hive database
-    _merchantIdController.text = LocalDatabase.getSetting('aba_merchant_id', '');
-    _apiKeyController.text = LocalDatabase.getSetting('aba_api_key', '');
-    _apiSecretController.text = LocalDatabase.getSetting('aba_api_secret', '');
-
-    _bakongAccountIdController.text = LocalDatabase.getSetting('bakong_account_id', 'raksa_coffee@usd');
-    _bakongMerchantNameController.text = LocalDatabase.getSetting('bakong_merchant_name', 'Raksa Coffee');
-    _bakongMerchantCityController.text = LocalDatabase.getSetting('bakong_merchant_city', 'Phnom Penh');
-    
-    _qrProvider = LocalDatabase.getSetting('qr_provider', 'aba');
-
-    // Auto-fetch dynamic QR if credentials exist
+    // Auto-fetch dynamic QR
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _generateDynamicQrCode();
     });
@@ -71,25 +50,19 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
 
   @override
   void dispose() {
-    _merchantIdController.dispose();
-    _apiKeyController.dispose();
-    _apiSecretController.dispose();
-    _bakongAccountIdController.dispose();
-    _bakongMerchantNameController.dispose();
-    _bakongMerchantCityController.dispose();
     super.dispose();
   }
 
   Future<void> _generateDynamicQrCode() async {
     if (_qrProvider == 'bakong') {
-      final accountId = _bakongAccountIdController.text.trim();
-      final merchantName = _bakongMerchantNameController.text.trim();
-      final merchantCity = _bakongMerchantCityController.text.trim();
+      final accountId = EnvConfig.bakongAccountId;
+      final merchantName = EnvConfig.bakongMerchantName;
+      final merchantCity = EnvConfig.bakongMerchantCity;
 
       if (accountId.isEmpty || merchantName.isEmpty) {
         setState(() {
           _dynamicQrString = null;
-          _qrError = 'Please enter Bakong Account ID and Merchant Name';
+          _qrError = 'Please configure Bakong Account ID and Merchant Name in EnvConfig';
         });
         return;
       }
@@ -129,14 +102,14 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
   }
 
   Future<void> _fetchAbaPayWayQrCode() async {
-    final merchantId = _merchantIdController.text.trim();
-    final apiKey = _apiKeyController.text.trim();
-    final apiSecret = _apiSecretController.text.trim();
+    final merchantId = EnvConfig.abaMerchantId;
+    final apiKey = EnvConfig.abaApiKey;
+    final apiSecret = EnvConfig.abaApiSecret;
 
     if (merchantId.isEmpty || apiSecret.isEmpty) {
       setState(() {
         _dynamicQrString = null;
-        _qrError = '';
+        _qrError = 'Please configure ABA credentials in EnvConfig';
       });
       return;
     }
@@ -162,8 +135,6 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
       final hmacSha512 = Hmac(sha512, keyBytes);
       final digest = hmacSha512.convert(dataBytes);
       final generatedHash = base64.encode(digest.bytes);
-
-
 
       // 3. SEND POST REQUEST TO ABA PAYWAY SANDBOX
       final url = Uri.parse('https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/generate-qr');
