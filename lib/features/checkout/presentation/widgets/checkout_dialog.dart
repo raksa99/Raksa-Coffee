@@ -301,6 +301,170 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
 
         // INITIAL & PROCESSING STATE
         final isProcessing = state is CheckoutProcessing;
+        final size = MediaQuery.of(context).size;
+        final isMobile = size.width < 750;
+
+        if (isMobile) {
+          final activeLayout = _selectedMethod == PaymentMethod.cash
+              ? _buildCashLayout(theme, isDark, true)
+              : (_selectedMethod == PaymentMethod.card
+                  ? _buildCardLayout(theme, isDark)
+                  : _buildQRLayout(theme, isDark));
+
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 480,
+                maxHeight: size.height * 0.9,
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Title and Close button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'selectPaymentMethod'.tr(context),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Quick total payable block card
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E1A18) : const Color(0xFFFAF6F0),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "${'total'.tr(context)} (USD)",
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              ),
+                              Text(
+                                CurrencyFormatter.formatUsd(widget.order.total),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "${'total'.tr(context)} (KHR)",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: theme.colorScheme.secondary,
+                                ),
+                              ),
+                              Text(
+                                CurrencyFormatter.formatKhr(widget.order.total),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: theme.colorScheme.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Payment Method selector tabs
+                    Row(
+                      children: [
+                        _buildPaymentMethodTab(
+                          method: PaymentMethod.cash,
+                          icon: Icons.payments_outlined,
+                          label: 'cash'.tr(context),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildPaymentMethodTab(
+                          method: PaymentMethod.card,
+                          icon: Icons.credit_card_outlined,
+                          label: 'card'.tr(context),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildPaymentMethodTab(
+                          method: PaymentMethod.qrCode,
+                          icon: Icons.qr_code_scanner_outlined,
+                          label: 'qrScan'.tr(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Payment layout
+                    activeLayout,
+                    const SizedBox(height: 24),
+
+                    // Process Checkout button
+                    ElevatedButton(
+                      onPressed: isProcessing || (_selectedMethod == PaymentMethod.cash && _amountPaid < widget.order.total)
+                          ? null
+                          : () {
+                              context.read<CheckoutBloc>().add(
+                                    ProcessPayment(
+                                      order: widget.order,
+                                      paymentMethod: _selectedMethod,
+                                      amountPaid: _selectedMethod == PaymentMethod.cash 
+                                          ? _amountPaid 
+                                          : widget.order.total,
+                                    ),
+                                  );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: isProcessing
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : Text(
+                              _selectedMethod == PaymentMethod.cash
+                                  ? 'Complete Cash Sale'
+                                  : 'Authorise & Charge',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
 
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -356,7 +520,7 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                             index: _selectedMethod.index,
                             children: [
                               // CASH CALCULATOR
-                              _buildCashLayout(theme, isDark),
+                              _buildCashLayout(theme, isDark, false),
                               // CARD TERMINAL
                               _buildCardLayout(theme, isDark),
                               // QR WALLET
@@ -554,7 +718,155 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
     );
   }
 
-  Widget _buildCashLayout(ThemeData theme, bool isDark) {
+  Widget _buildCashLayout(ThemeData theme, bool isDark, bool isMobile) {
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Amount display box
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1A18) : const Color(0xFFF3EFE9),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _amountPaid < widget.order.total 
+                    ? theme.colorScheme.error 
+                    : (isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3)),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${'tendered'.tr(context)}:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  CurrencyFormatter.format(_amountPaid),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: _amountPaid < widget.order.total ? theme.colorScheme.error : theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // USD & Riel bills quick suggestions in a horizontal scrollable row
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // Exact
+                OutlinedButton(
+                  onPressed: () => _onQuickCashSelected(widget.order.total),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    backgroundColor: theme.colorScheme.primary.withAlpha(20),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    side: BorderSide(color: theme.colorScheme.primary),
+                  ),
+                  child: Text(
+                    'Exact: ${CurrencyFormatter.format(widget.order.total)}',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary, fontSize: 12),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // USD
+                ...[5.0, 10.0, 20.0, 50.0, 100.0].map((val) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: OutlinedButton(
+                      onPressed: () => _onQuickCashSelected(val),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Text('\$${val.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    ),
+                  );
+                }),
+                // KHR
+                ...[10000.0, 20000.0, 50000.0, 100000.0].map((khrVal) {
+                  final usdEquivalent = khrVal / CurrencyFormatter.usdToKhrRate;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: OutlinedButton(
+                      onPressed: () => _onQuickCashSelected(usdEquivalent),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Text('${(khrVal / 1000).toStringAsFixed(0)}k ៛', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Custom Numeric Keypad
+          SizedBox(
+            height: 180,
+            child: GridView.count(
+              crossAxisCount: 3,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              childAspectRatio: 2.2, // wider aspect ratio for mobile keypad
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                ...'123456789.0C'.split(''),
+              ].map((char) {
+                return ElevatedButton(
+                  onPressed: () => _onKeypadPressed(char),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDark ? const Color(0xFF26211F) : Colors.white,
+                    foregroundColor: theme.textTheme.bodyLarge?.color,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(
+                        color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    char,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Change returned preview
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondary.withAlpha(26),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('changeDue'.tr(context).toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                Text(
+                  CurrencyFormatter.format(_changeDue),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.secondary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return Row(
       children: [
         // Keyboard and input on the left
