@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/network/local_database.dart';
+import '../../../../core/network/supabase_service.dart';
 import '../../data/datasources/local_menu_datasource.dart';
 import '../../domain/models/modifier.dart';
 import '../../domain/models/product.dart';
@@ -28,6 +30,10 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
   String? _selectedCategory;
   bool _isCreatingNewCategory = false;
+
+  // Picked image state variables
+  XFile? _pickedImage;
+  bool _isUploadingImage = false;
 
   // Selected modifier templates checklist
   final Map<String, bool> _modifierSelections = {
@@ -61,6 +67,27 @@ class _AddProductDialogState extends State<AddProductDialog> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    try {
+      final image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        setState(() {
+          _pickedImage = image;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _saveProduct() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -73,7 +100,48 @@ class _AddProductDialogState extends State<AddProductDialog> {
     final name = _nameController.text.trim();
     final description = _descController.text.trim();
     final price = double.tryParse(_priceController.text.trim()) ?? 0.0;
-    final imageUrl = _imageUrlController.text.trim();
+    
+    String? finalImageUrl;
+
+    // 1. If a local file was picked, upload it to Supabase Storage
+    if (_pickedImage != null) {
+      if (!SupabaseService.isConfigured) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Supabase is not configured. Local image upload requires Supabase credentials.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        _isUploadingImage = true;
+      });
+
+      try {
+        finalImageUrl = await SupabaseService.uploadProductImage(_pickedImage!);
+        if (finalImageUrl == null) {
+          throw Exception('Image upload returned null. Check that your Supabase "product-images" storage bucket exists and is public.');
+        }
+      } catch (e) {
+        setState(() {
+          _isUploadingImage = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Upload failed: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+    } else {
+      final inputUrl = _imageUrlController.text.trim();
+      finalImageUrl = inputUrl.isEmpty ? null : inputUrl;
+    }
 
     // Assemble selected modifier groups based on checkboxes
     final List<ModifierGroup> selectedGroups = [];
@@ -90,7 +158,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
       description: description,
       basePrice: price,
       category: finalCategory,
-      imageUrl: imageUrl.isEmpty ? null : imageUrl,
+      imageUrl: finalImageUrl,
       isAvailable: true,
       modifierGroups: selectedGroups,
     );
@@ -101,18 +169,26 @@ class _AddProductDialogState extends State<AddProductDialog> {
       final updatedList = [...currentProducts, newProduct];
       await LocalDatabase.saveProducts(updatedList);
 
+      // Upload to Supabase cloud table if configured
+      if (SupabaseService.isConfigured) {
+        await SupabaseService.pushProduct(newProduct);
+      }
+
       // Trigger Bloc refresh
       if (mounted) {
         context.read<MenuBloc>().add(LoadMenu());
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Product "$name" added to "$finalCategory" successfully!'),
+            content: Text('Product "$name" added successfully!'),
             backgroundColor: Colors.green,
           ),
         );
       }
     } catch (e) {
+      setState(() {
+        _isUploadingImage = false;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -283,15 +359,101 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         ],
                         const SizedBox(height: 16),
 
-                        // Image URL
-                        TextFormField(
-                          controller: _imageUrlController,
-                          decoration: const InputDecoration(
-                            labelText: 'Product Image URL (Optional)',
-                            hintText: 'https://images.unsplash.com/...',
-                            border: OutlineInputBorder(),
+                        // Product Image Picker Selector
+                        Text(
+                          'Product Image',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
-                          keyboardType: TextInputType.url,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E1A18) : const Color(0xFFF3EFE9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (_pickedImage == null) ...[
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: _pickImage,
+                                        icon: const Icon(Icons.image_outlined),
+                                        label: const Text('Import Image from File'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                const Center(
+                                  child: Text(
+                                    'OR',
+                                    style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: _imageUrlController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Paste Image URL instead',
+                                    hintText: 'https://images.unsplash.com/...',
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                  ),
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ] else ...[
+                                Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        _pickedImage!.path,
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.image, size: 50),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _pickedImage!.name,
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const Text(
+                                            'Selected from local files',
+                                            style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _pickedImage = null;
+                                        });
+                                      },
+                                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 20),
 
@@ -347,8 +509,17 @@ class _AddProductDialogState extends State<AddProductDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _saveProduct,
-                        child: const Text('Add to Menu'),
+                        onPressed: _isUploadingImage ? null : _saveProduct,
+                        child: _isUploadingImage
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text('Add to Menu'),
                       ),
                     ),
                   ],

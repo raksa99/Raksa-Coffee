@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import '../config/env_config.dart';
 import '../../features/menu/domain/models/product.dart';
 import '../../features/checkout/domain/models/order.dart';
@@ -29,6 +30,31 @@ class SupabaseService {
   // ==========================================
   // PRODUCTS SYNC LOGIC
   // ==========================================
+
+  /// Uploads a product image XFile to Supabase Storage and returns its public URL.
+  static Future<String?> uploadProductImage(XFile file) async {
+    if (!isConfigured) return null;
+
+    try {
+      final bytes = await file.readAsBytes();
+      final extension = file.name.split('.').last.toLowerCase();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
+      
+      await client.storage.from('product-images').uploadBinary(
+        fileName,
+        bytes,
+        fileOptions: FileOptions(
+          contentType: 'image/$extension',
+          upsert: true,
+        ),
+      );
+
+      final publicUrl = client.storage.from('product-images').getPublicUrl(fileName);
+      return publicUrl;
+    } catch (e) {
+      return null;
+    }
+  }
 
   /// Pulls the latest products list from Supabase and overwrites local cache.
   static Future<List<Product>> pullProducts() async {
