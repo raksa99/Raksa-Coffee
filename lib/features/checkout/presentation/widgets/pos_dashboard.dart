@@ -84,37 +84,39 @@ class _PosDashboardState extends State<PosDashboard> {
                 ),
               ),
         actions: [
-          // Nav bar items (Counter vs Dashboard)
-          TextButton.icon(
-            onPressed: () => setState(() => _activeNavIndex = 0),
-            icon: Icon(
-              Icons.point_of_sale,
-              color: _activeNavIndex == 0 ? theme.colorScheme.primary : theme.colorScheme.secondary,
-            ),
-            label: Text(
-              'counter'.tr(context),
-              style: TextStyle(
-                color: _activeNavIndex == 0 ? theme.colorScheme.primary : theme.textTheme.bodyMedium?.color,
-                fontWeight: _activeNavIndex == 0 ? FontWeight.bold : FontWeight.normal,
+          // Nav bar items (Counter vs Dashboard) - only show on desktop/tablet
+          if (!isMobile) ...[
+            TextButton.icon(
+              onPressed: () => setState(() => _activeNavIndex = 0),
+              icon: Icon(
+                Icons.point_of_sale,
+                color: _activeNavIndex == 0 ? theme.colorScheme.primary : theme.colorScheme.secondary,
+              ),
+              label: Text(
+                'counter'.tr(context),
+                style: TextStyle(
+                  color: _activeNavIndex == 0 ? theme.colorScheme.primary : theme.textTheme.bodyMedium?.color,
+                  fontWeight: _activeNavIndex == 0 ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          TextButton.icon(
-            onPressed: () => setState(() => _activeNavIndex = 1),
-            icon: Icon(
-              Icons.analytics_outlined,
-              color: _activeNavIndex == 1 ? theme.colorScheme.primary : theme.colorScheme.secondary,
-            ),
-            label: Text(
-              'salesReport'.tr(context),
-              style: TextStyle(
-                color: _activeNavIndex == 1 ? theme.colorScheme.primary : theme.textTheme.bodyMedium?.color,
-                fontWeight: _activeNavIndex == 1 ? FontWeight.bold : FontWeight.normal,
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: () => setState(() => _activeNavIndex = 1),
+              icon: Icon(
+                Icons.analytics_outlined,
+                color: _activeNavIndex == 1 ? theme.colorScheme.primary : theme.colorScheme.secondary,
+              ),
+              label: Text(
+                'salesReport'.tr(context),
+                style: TextStyle(
+                  color: _activeNavIndex == 1 ? theme.colorScheme.primary : theme.textTheme.bodyMedium?.color,
+                  fontWeight: _activeNavIndex == 1 ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
           
           // Add product button
           IconButton(
@@ -174,11 +176,52 @@ class _PosDashboardState extends State<PosDashboard> {
           const SizedBox(width: 12),
         ],
       ),
-      body: _activeNavIndex == 1
-          ? const DailyDashboard()
-          : (isMobile 
-              ? _buildMobileLayout(context, theme, isDark) 
-              : _buildTabletLayout(context, theme, isDark)),
+      body: isMobile
+          ? _buildMobileBody(context, theme, isDark)
+          : (_activeNavIndex == 1 ? const DailyDashboard() : _buildTabletLayout(context, theme, isDark)),
+      bottomNavigationBar: isMobile
+          ? BottomNavigationBar(
+              currentIndex: _activeNavIndex > 2 ? 0 : _activeNavIndex,
+              onTap: (index) {
+                setState(() {
+                  _activeNavIndex = index;
+                });
+              },
+              backgroundColor: isDark ? const Color(0xFF1C1816) : Colors.white,
+              selectedItemColor: theme.colorScheme.primary,
+              unselectedItemColor: theme.colorScheme.secondary,
+              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              unselectedLabelStyle: const TextStyle(fontSize: 12),
+              type: BottomNavigationBarType.fixed,
+              items: [
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.point_of_sale_outlined),
+                  activeIcon: const Icon(Icons.point_of_sale),
+                  label: 'counter'.tr(context),
+                ),
+                BottomNavigationBarItem(
+                  icon: BlocBuilder<CartBloc, CartState>(
+                    builder: (context, state) {
+                      final count = state.items.fold(0, (sum, i) => sum + i.quantity);
+                      if (count == 0) {
+                        return const Icon(Icons.shopping_bag_outlined);
+                      }
+                      return Badge(
+                        label: Text('$count'),
+                        child: const Icon(Icons.shopping_bag),
+                      );
+                    },
+                  ),
+                  label: 'currentOrder'.tr(context),
+                ),
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.analytics_outlined),
+                  activeIcon: const Icon(Icons.analytics),
+                  label: 'salesReport'.tr(context),
+                ),
+              ],
+            )
+          : null,
     );
   }
 
@@ -200,6 +243,19 @@ class _PosDashboardState extends State<PosDashboard> {
         ),
       ],
     );
+  }
+
+  // Mobile layout body switching
+  Widget _buildMobileBody(BuildContext context, ThemeData theme, bool isDark) {
+    switch (_activeNavIndex) {
+      case 1:
+        return const CartSidebar();
+      case 2:
+        return const DailyDashboard();
+      case 0:
+      default:
+        return _buildMobileLayout(context, theme, isDark);
+    }
   }
 
   // Mobile layout with a bottom cart sliding sheet drawer toggle
@@ -242,26 +298,10 @@ class _PosDashboardState extends State<PosDashboard> {
                 ),
                 child: ElevatedButton(
                   onPressed: () {
-                    // Open cart sidebar inside mobile bottom sheet
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      useSafeArea: true,
-                      builder: (_) {
-                        return DraggableScrollableSheet(
-                          initialChildSize: 0.9,
-                          minChildSize: 0.5,
-                          maxChildSize: 1.0,
-                          expand: false,
-                          builder: (context, scrollController) {
-                            return BlocProvider.value(
-                              value: context.read<CartBloc>(),
-                              child: const CartSidebar(),
-                            );
-                          },
-                        );
-                      },
-                    );
+                    // Switch to Cart Tab directly
+                    setState(() {
+                      _activeNavIndex = 1;
+                    });
                   },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
