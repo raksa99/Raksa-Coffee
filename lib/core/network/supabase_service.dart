@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../config/env_config.dart';
@@ -121,6 +122,7 @@ class SupabaseService {
       });
       return true;
     } catch (e) {
+      developer.log('Supabase uploadOrder error', error: e);
       return false;
     }
   }

@@ -28,9 +28,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       // Save to local database (sales history)
       await LocalDatabase.saveSale(completedOrder);
 
-      // Push to Supabase in the background if configured
+      // Push to Supabase and wait up to 3 seconds before succeeding locally
       if (SupabaseService.isConfigured) {
-        SupabaseService.uploadOrder(completedOrder);
+        await SupabaseService.uploadOrder(completedOrder)
+            .timeout(const Duration(seconds: 3), onTimeout: () => false);
       }
 
       emit(CheckoutSuccess(completedOrder));
