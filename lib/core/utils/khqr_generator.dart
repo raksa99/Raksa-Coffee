@@ -23,6 +23,7 @@ class KhqrGenerator {
       merchantCity: merchantCity,
       amount: khqrAmount,
       currency: khqrCurrency.code,
+      expirationTimestamp: DateTime.now().millisecondsSinceEpoch + (2 * 60 * 60 * 1000),
     );
 
     final response = KHQRGenerator.generateIndividual(individualInfo);
