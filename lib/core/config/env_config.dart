@@ -2,7 +2,7 @@ class EnvConfig {
   // ==========================================
   // BAKONG CONFIGURATIONS
   // ==========================================
-  static const String bakongAccountId = 'raksa_coffee@usd';
+  static const String bakongAccountId = 'raksa_em@bkrt';
   static const String bakongMerchantName = 'Raksa Coffee';
   static const String bakongMerchantCity = 'Phnom Penh';
 
