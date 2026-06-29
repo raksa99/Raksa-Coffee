@@ -32,12 +32,9 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
 
   // Dynamic ABA QR / Bakong API Settings
   String _qrProvider = 'aba'; // 'aba' or 'bakong'
-  bool _showApiSettings = false;
   bool _isLoadingQr = false;
   String? _dynamicQrString;
   String _qrError = '';
-  String _teachConcatString = '';
-  String _teachHash = '';
 
   // ABA Controllers
   final _merchantIdController = TextEditingController();
@@ -117,8 +114,6 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
 
         setState(() {
           _dynamicQrString = qrPayload;
-          _teachConcatString = 'EMVCo tags assembled locally';
-          _teachHash = 'CRC16 CCITT Computed: ${qrPayload.substring(qrPayload.length - 4)}';
           _isLoadingQr = false;
         });
       } catch (e) {
@@ -168,10 +163,7 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
       final digest = hmacSha512.convert(dataBytes);
       final generatedHash = base64.encode(digest.bytes);
 
-      setState(() {
-        _teachConcatString = rawData;
-        _teachHash = generatedHash;
-      });
+
 
       // 3. SEND POST REQUEST TO ABA PAYWAY SANDBOX
       final url = Uri.parse('https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/generate-qr');
@@ -809,476 +801,155 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
     final usdTotal = CurrencyFormatter.formatUsd(widget.order.total);
     final khrTotal = CurrencyFormatter.formatKhr(widget.order.total);
 
-    return SingleChildScrollView(
+    return Center(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Header Settings Toggle Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _showApiSettings ? 'Payment Settings' : 'scanToPay'.tr(context),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _showApiSettings = !_showApiSettings;
-                  });
-                },
-                icon: Icon(
-                  _showApiSettings ? Icons.qr_code_scanner : Icons.settings,
-                  size: 16,
+          // KHQR CARD
+          Container(
+            width: 250,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF005A70), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(20),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                label: Text(
-                  _showApiSettings ? 'Show QR' : 'API Settings',
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          if (_showApiSettings) ...[
-            // Segmented Provider Selector
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E1A18) : const Color(0xFFF3EFE9),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _qrProvider = 'aba';
-                          LocalDatabase.saveSetting('qr_provider', 'aba');
-                          _teachConcatString = '';
-                          _teachHash = '';
-                        });
-                        _generateDynamicQrCode();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _qrProvider == 'aba'
-                              ? theme.colorScheme.primary
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'ABA PayWay API',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: _qrProvider == 'aba' ? Colors.white : theme.textTheme.bodyMedium?.color,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _qrProvider = 'bakong';
-                          LocalDatabase.saveSetting('qr_provider', 'bakong');
-                          _teachConcatString = '';
-                          _teachHash = '';
-                        });
-                        _generateDynamicQrCode();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _qrProvider == 'bakong'
-                              ? theme.colorScheme.primary
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Bakong KHQR',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: _qrProvider == 'bakong' ? Colors.white : theme.textTheme.bodyMedium?.color,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-            const SizedBox(height: 8),
-
-            // API Credentials Fields
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E1A18) : const Color(0xFFF3EFE9),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3)),
-              ),
-              child: _qrProvider == 'aba'
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextField(
-                          controller: _merchantIdController,
-                          decoration: const InputDecoration(
-                            labelText: 'Merchant ID',
-                            labelStyle: TextStyle(fontSize: 12),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          ),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _apiKeyController,
-                          decoration: const InputDecoration(
-                            labelText: 'API Key (Public)',
-                            labelStyle: TextStyle(fontSize: 12),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          ),
-                          obscureText: true,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _apiSecretController,
-                          decoration: const InputDecoration(
-                            labelText: 'API Secret (Private)',
-                            labelStyle: TextStyle(fontSize: 12),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          ),
-                          obscureText: true,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: () async {
-                            await LocalDatabase.saveSetting('aba_merchant_id', _merchantIdController.text.trim());
-                            await LocalDatabase.saveSetting('aba_api_key', _apiKeyController.text.trim());
-                            await LocalDatabase.saveSetting('aba_api_secret', _apiSecretController.text.trim());
-                            
-                            _generateDynamicQrCode();
-                            
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('ABA PayWay Sandbox credentials saved!'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                          child: const Text('Save & Fetch Dynamic QR'),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextField(
-                          controller: _bakongAccountIdController,
-                          decoration: const InputDecoration(
-                            labelText: 'Bakong Account ID',
-                            labelStyle: TextStyle(fontSize: 12),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          ),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _bakongMerchantNameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Merchant Name',
-                            labelStyle: TextStyle(fontSize: 12),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          ),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _bakongMerchantCityController,
-                          decoration: const InputDecoration(
-                            labelText: 'Merchant City',
-                            labelStyle: TextStyle(fontSize: 12),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          ),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: () async {
-                            await LocalDatabase.saveSetting('bakong_account_id', _bakongAccountIdController.text.trim());
-                            await LocalDatabase.saveSetting('bakong_merchant_name', _bakongMerchantNameController.text.trim());
-                            await LocalDatabase.saveSetting('bakong_merchant_city', _bakongMerchantCityController.text.trim());
-                            
-                            _generateDynamicQrCode();
-                            
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Bakong KHQR details saved!'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                          child: const Text('Save & Compile Local KHQR'),
-                        ),
-                      ],
-                    ),
-            ),
-            if (_teachConcatString.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF26211F) : const Color(0xFFEADFD3).withAlpha(100),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Column(
+              children: [
+                // Logo header row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      _qrProvider == 'aba'
-                          ? '📚 How Signature is Signed (ABA PayWay):'
-                          : '📚 How EMVCo KHQR String is Compiled:',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.blueGrey),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _qrProvider == 'aba'
-                          ? '1. Parameter Concat:\n"$_teachConcatString"'
-                          : '1. Local Tag-Length-Value Blocks:\n"$_teachConcatString"',
-                      style: const TextStyle(fontFamily: 'Courier', fontSize: 9),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _qrProvider == 'aba'
-                          ? '2. HMAC-SHA512 Base64 Hash:\n"$_teachHash"'
-                          : '2. Local Checksum:\n"$_teachHash"',
-                      style: const TextStyle(fontFamily: 'Courier', fontSize: 9, color: Colors.green),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ] else ...[
-            // KHQR CARD
-            Container(
-              width: 250,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF005A70), width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(20),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Logo header row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE1261C),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'KHQR',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE1261C),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      Text(
-                        _qrProvider == 'aba' ? 'ABA Mobile' : 'BAKONG KHQR',
-                        style: const TextStyle(
-                          color: Color(0xFF005A70),
-                          fontSize: 9,
+                      child: const Text(
+                        'KHQR',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
                           fontWeight: FontWeight.bold,
-                          fontFamily: 'Outfit',
+                          letterSpacing: 0.5,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Dynamic / Static QR code display
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.grey[200]!),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: _isLoadingQr
-                          ? const SizedBox(
-                              width: 140,
-                              height: 140,
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF005A70)),
-                                ),
+                    Text(
+                      _qrProvider == 'aba' ? 'ABA Mobile' : 'BAKONG KHQR',
+                      style: const TextStyle(
+                        color: Color(0xFF005A70),
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Outfit',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Dynamic / Static QR code display
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: _isLoadingQr
+                        ? const SizedBox(
+                            width: 140,
+                            height: 140,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF005A70)),
                               ),
-                            )
-                          : Image.network(
-                              Uri.https('api.qrserver.com', '/v1/create-qr-code/', {
-                                'size': '250x250',
-                                'data': _dynamicQrString ?? 'https://link.payway.com.kh/ABAPAYPd468685R',
-                              }).toString(),
-                              width: 140,
-                              height: 140,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const SizedBox(
-                                  width: 140,
-                                  height: 140,
-                                  child: Center(
-                                    child: Icon(Icons.qr_code_2, size: 50, color: Colors.grey),
-                                  ),
-                                );
-                              },
                             ),
-                    ),
+                          )
+                        : Image.network(
+                            Uri.https('api.qrserver.com', '/v1/create-qr-code/', {
+                              'size': '250x250',
+                              'data': _dynamicQrString ?? 'https://link.payway.com.kh/ABAPAYPd468685R',
+                            }).toString(),
+                            width: 140,
+                            height: 140,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const SizedBox(
+                                width: 140,
+                                height: 140,
+                                child: Center(
+                                  child: Icon(Icons.qr_code_2, size: 50, color: Colors.grey),
+                                ),
+                              );
+                            },
+                          ),
                   ),
-                  const SizedBox(height: 8),
+                ),
+                const SizedBox(height: 8),
 
-                  // Display Totals inside the Card
-                  Text(
-                    usdTotal,
-                    style: const TextStyle(
-                      color: Color(0xFF005A70),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                // Display Totals inside the Card
+                Text(
+                  usdTotal,
+                  style: const TextStyle(
+                    color: Color(0xFF005A70),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
-                  Text(
-                    khrTotal,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                Text(
+                  khrTotal,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            if (_qrError.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  _qrError,
-                  style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.w600),
-                  textAlign: TextAlign.center,
-                ),
+          if (_qrError.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                _qrError,
+                style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
               ),
-            ] else if (_dynamicQrString == null) ...[
-              const SizedBox(height: 8),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withAlpha(20),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline, size: 14, color: Colors.blue),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _qrProvider == 'aba'
-                            ? 'Demo Mode: Tap settings icon to configure ABA Sandbox credentials.'
-                            : 'Demo Mode: Tap settings icon to configure Bakong account details.',
-                        style: TextStyle(color: isDark ? Colors.blue[200] : Colors.blue[800], fontSize: 10),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              const SizedBox(height: 8),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.green.withAlpha(20),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle_outline, size: 14, color: Colors.green),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _qrProvider == 'aba'
-                            ? 'Live Dynamic KHQR Code generated from ABA Sandbox API successfully!'
-                            : 'Live Dynamic KHQR Code generated locally via EMVCo compiler successfully!',
-                        style: const TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            
-            const SizedBox(height: 12),
-            Text(
-              'bakongGuide'.tr(context),
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'instantCredit'.tr(context),
-              style: const TextStyle(
-                fontSize: 10,
-                color: Colors.grey,
-              ),
-              textAlign: TextAlign.center,
             ),
           ],
+          
+          const SizedBox(height: 12),
+          Text(
+            'bakongGuide'.tr(context),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'instantCredit'.tr(context),
+            style: const TextStyle(
+              fontSize: 10,
+              color: Colors.grey,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
