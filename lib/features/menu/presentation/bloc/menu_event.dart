@@ -17,3 +17,12 @@ class SelectCategory extends MenuEvent {
   @override
   List<Object?> get props => [category];
 }
+
+class DeleteProduct extends MenuEvent {
+  final String productId;
+
+  const DeleteProduct(this.productId);
+
+  @override
+  List<Object?> get props => [productId];
+}

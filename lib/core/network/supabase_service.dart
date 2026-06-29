@@ -87,6 +87,17 @@ class SupabaseService {
     }
   }
 
+  /// Deletes a product from the Supabase cloud table.
+  static Future<void> deleteProduct(String productId) async {
+    if (!isConfigured) return;
+
+    try {
+      await client.from('products').delete().eq('id', productId);
+    } catch (e) {
+      // Quiet fail in background
+    }
+  }
+
   // ==========================================
   // ORDERS / SALES SYNC LOGIC
   // ==========================================

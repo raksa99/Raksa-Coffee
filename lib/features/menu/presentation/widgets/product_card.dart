@@ -5,11 +5,13 @@ import '../../domain/models/product.dart';
 class ProductCard extends StatelessWidget {
   final Product product;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   const ProductCard({
     super.key,
     required this.product,
     required this.onTap,
+    required this.onDelete,
   });
 
   Widget _buildPlaceholderImage(ThemeData theme, bool isDark) {
@@ -185,6 +187,24 @@ class ProductCard extends StatelessWidget {
                   ),
                 ),
               ),
+            
+            // Delete button overlay in top-right corner
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Material(
+                color: Colors.black.withAlpha(128),
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 16),
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.all(6),
+                  onPressed: onDelete,
+                  tooltip: 'Delete Product',
+                ),
+              ),
+            ),
           ],
         ),
       ),

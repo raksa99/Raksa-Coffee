@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../../cart/domain/models/cart_item.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../../../cart/presentation/bloc/cart_event.dart';
+import '../../domain/models/product.dart';
 import '../bloc/menu_bloc.dart';
 import '../bloc/menu_event.dart';
 import '../bloc/menu_state.dart';
@@ -169,6 +170,9 @@ class ProductGrid extends StatelessWidget {
                                     );
                                   }
                                 },
+                                onDelete: () {
+                                  _showDeleteConfirmation(context, product);
+                                },
                               );
                             },
                           );
@@ -180,6 +184,41 @@ class ProductGrid extends StatelessWidget {
         }
 
         return const SizedBox.shrink();
+      },
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, Product product) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Menu Item'),
+          content: Text('Are you sure you want to delete "${product.name}"? This will permanently remove it from both local storage and the Supabase cloud database.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                context.read<MenuBloc>().add(DeleteProduct(product.id));
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Product "${product.name}" deleted.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
       },
     );
   }
