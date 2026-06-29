@@ -9,6 +9,7 @@ import '../../../menu/presentation/bloc/menu_state.dart';
 import '../../../menu/presentation/widgets/add_product_dialog.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../menu/presentation/widgets/product_grid.dart';
+import '../../../../core/network/local_database.dart';
 import 'daily_dashboard.dart';
 
 class PosDashboard extends StatefulWidget {
@@ -31,6 +32,99 @@ class PosDashboard extends StatefulWidget {
 
 class _PosDashboardState extends State<PosDashboard> {
   int _activeNavIndex = 0; // 0 = POS Counter, 1 = Sales Report
+
+  void _showSettingsDialog() {
+    final bakongIdController = TextEditingController(
+      text: LocalDatabase.getSetting('bakong_account_id', 'raksa_coffee@usd'),
+    );
+    final merchantNameController = TextEditingController(
+      text: LocalDatabase.getSetting('bakong_merchant_name', 'Raksa Coffee'),
+    );
+    final merchantCityController = TextEditingController(
+      text: LocalDatabase.getSetting('bakong_merchant_city', 'Phnom Penh'),
+    );
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Bakong QR Settings'),
+              IconButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Configure the account information used to compile the dynamic Bakong KHQR code on checkout.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: bakongIdController,
+                  decoration: const InputDecoration(
+                    labelText: 'Bakong Account ID (or Mobile Number)',
+                    helperText: 'e.g. raksa_coffee@usd or 012345678@usd',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: merchantNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Merchant Name',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: merchantCityController,
+                  decoration: const InputDecoration(
+                    labelText: 'Merchant City',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            OutlinedButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final navigator = Navigator.of(dialogContext);
+                final messenger = ScaffoldMessenger.of(context);
+
+                await LocalDatabase.saveSetting('bakong_account_id', bakongIdController.text.trim());
+                await LocalDatabase.saveSetting('bakong_merchant_name', merchantNameController.text.trim());
+                await LocalDatabase.saveSetting('bakong_merchant_city', merchantCityController.text.trim());
+                
+                // Automatically switch dynamic QR provider to Bakong since user is saving Bakong settings
+                await LocalDatabase.saveSetting('qr_provider', 'bakong');
+
+                navigator.pop();
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Bakong KHQR credentials saved successfully!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              child: const Text('Save Settings'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +234,14 @@ class _PosDashboardState extends State<PosDashboard> {
             },
             icon: const Icon(Icons.add_circle_outline),
             tooltip: 'addMenuItem'.tr(context),
+          ),
+          const SizedBox(width: 8),
+
+          // Settings button
+          IconButton(
+            onPressed: () => _showSettingsDialog(),
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
           ),
           const SizedBox(width: 8),
 
