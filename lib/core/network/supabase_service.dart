@@ -40,7 +40,7 @@ class SupabaseService {
       final extension = file.name.split('.').last.toLowerCase();
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
       
-      await client.storage.from('product-images').uploadBinary(
+      await client.storage.from('Product_image').uploadBinary(
         fileName,
         bytes,
         fileOptions: FileOptions(
@@ -49,7 +49,7 @@ class SupabaseService {
         ),
       );
 
-      final publicUrl = client.storage.from('product-images').getPublicUrl(fileName);
+      final publicUrl = client.storage.from('Product_image').getPublicUrl(fileName);
       return publicUrl;
     } catch (e) {
       return null;
