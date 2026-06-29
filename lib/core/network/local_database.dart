@@ -67,6 +67,13 @@ class LocalDatabase {
     await box.put(order.id, jsonEncode(order.copyWith(status: OrderStatus.completed).toJson()));
   }
 
+  static Future<void> saveSales(List<Order> sales) async {
+    final box = Hive.box(_salesBoxName);
+    for (var order in sales) {
+      await box.put(order.id, jsonEncode(order.toJson()));
+    }
+  }
+
   static Future<void> clearAllData() async {
     await Hive.box(_productsBoxName).clear();
     await Hive.box(_queuedOrdersBoxName).clear();

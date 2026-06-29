@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../config/env_config.dart';
 import '../../features/menu/domain/models/product.dart';
+import '../../features/cart/domain/models/cart_item.dart';
 import '../../features/checkout/domain/models/order.dart';
 import 'local_database.dart';
 
@@ -133,6 +134,63 @@ class SupabaseService {
 
     for (var order in localSales) {
       await uploadOrder(order);
+    }
+  }
+
+  /// Pulls completed sales orders from Supabase and saves them to local Hive database.
+  static Future<List<Order>> pullOrders() async {
+    if (!isConfigured) return [];
+
+    try {
+      final response = await client
+          .from('orders')
+          .select()
+          .order('created_at', ascending: false)
+          .limit(100);
+      
+      final List<Order> orders = [];
+      for (var json in response as List<dynamic>) {
+        try {
+          final itemsList = (json['items'] as List<dynamic>)
+              .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
+
+          final pMethod = PaymentMethod.values.firstWhere(
+            (e) => e.name == json['payment_method'],
+            orElse: () => PaymentMethod.cash,
+          );
+
+          final oStatus = OrderStatus.values.firstWhere(
+            (e) => e.name == json['status'],
+            orElse: () => OrderStatus.completed,
+          );
+
+          final order = Order(
+            id: json['id'] as String,
+            orderNumber: json['order_number'] as String? ?? '',
+            items: itemsList,
+            discountType: DiscountType.fixed,
+            discountValue: (json['discount'] as num? ?? 0).toDouble(),
+            taxRate: 0.08,
+            paymentMethod: pMethod,
+            amountPaid: (json['total'] as num? ?? 0).toDouble(),
+            dateTime: DateTime.parse(json['created_at'] as String),
+            status: oStatus,
+            customerName: '',
+          );
+          orders.add(order);
+        } catch (e) {
+          // ignore parsing error for single order
+        }
+      }
+
+      // Save to local Hive database to update cache
+      if (orders.isNotEmpty) {
+        await LocalDatabase.saveSales(orders);
+      }
+      return orders;
+    } catch (e) {
+      return [];
     }
   }
 }

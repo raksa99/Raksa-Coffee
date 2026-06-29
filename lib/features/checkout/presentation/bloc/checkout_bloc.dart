@@ -41,10 +41,24 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
   Future<void> _onLoadSalesHistory(LoadSalesHistory event, Emitter<CheckoutState> emit) async {
     try {
-      final sales = LocalDatabase.getSalesHistory();
+      // 1. Instantly yield whatever is in the local Hive box
+      var sales = LocalDatabase.getSalesHistory();
+      sales.sort((a, b) => b.dateTime.compareTo(a.dateTime));
       emit(SalesHistoryLoaded(sales));
+
+      // 2. Pull from Supabase in the background to update local cache
+      if (SupabaseService.isConfigured) {
+        final cloudSales = await SupabaseService.pullOrders();
+        if (cloudSales.isNotEmpty) {
+          sales = LocalDatabase.getSalesHistory();
+          sales.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+          emit(SalesHistoryLoaded(sales));
+        }
+      }
     } catch (e) {
-      emit(CheckoutFailure(e.toString()));
+      final sales = LocalDatabase.getSalesHistory();
+      sales.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+      emit(SalesHistoryLoaded(sales));
     }
   }
 

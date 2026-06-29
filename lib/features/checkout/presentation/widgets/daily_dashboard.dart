@@ -8,8 +8,20 @@ import '../bloc/checkout_bloc.dart';
 import '../bloc/checkout_event.dart';
 import '../bloc/checkout_state.dart';
 
-class DailyDashboard extends StatelessWidget {
+class DailyDashboard extends StatefulWidget {
   const DailyDashboard({super.key});
+
+  @override
+  State<DailyDashboard> createState() => _DailyDashboardState();
+}
+
+class _DailyDashboardState extends State<DailyDashboard> {
+  @override
+  void initState() {
+    super.initState();
+    // Dispatch LoadSalesHistory exactly once when report mounts
+    context.read<CheckoutBloc>().add(LoadSalesHistory());
+  }
 
   void _showReprintReceiptDialog(BuildContext context, Order order) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -123,9 +135,6 @@ class DailyDashboard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final size = MediaQuery.of(context).size;
     final isMobile = size.width < 750;
-
-    // Load sales history on build
-    context.read<CheckoutBloc>().add(LoadSalesHistory());
 
     return BlocBuilder<CheckoutBloc, CheckoutState>(
       builder: (context, state) {
