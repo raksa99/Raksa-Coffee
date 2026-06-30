@@ -7,7 +7,7 @@ class EnvConfig {
   static const String bakongMerchantCity = 'Phnom Penh';
   static const String bakongApiBaseUrl = 'https://api-bakong.nbc.gov.kh';
   static const String bakongToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiNTA4NTQ2ZWEzMWQ2NDFhOSJ9LCJpYXQiOjE3ODI3NDczMzYsImV4cCI6MTc5MDUyMzMzNn0.Atd78MIIhuxaTKvbspPnRSS2c3L7-XhL8uf8S1IM6Ag'; // Enter your Bakong Bearer Access Token here
-  static const String corsProxyUrl = 'https://raksa-coffee.vercel.app/api/cors-proxy?url=';
+  static const String corsProxyUrl = ''; // Set empty to make direct API calls when running Chrome with --disable-web-security
 
   // ==========================================
   // ABA PAYWAY CONFIGURATIONS (SANDBOX)
