@@ -410,14 +410,15 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                           child: OutlinedButton.icon(
                             onPressed: () {
                               final receiptCard = ModernReceiptCard(order: state.order);
-                              final invoiceUrl = receiptCard.buildInvoiceQrData();
-                              final printUrl = '$invoiceUrl&print=true';
+                              final fullUrl = receiptCard.buildInvoiceQrData();
+                              final dataParam = fullUrl.split('?data=').last;
+                              final localInvoiceUrl = 'invoice.html?data=$dataParam';
                               if (kIsWeb) {
-                                js.context.callMethod('open', [printUrl]);
+                                js.context.callMethod('printInvoiceInIframe', [localInvoiceUrl]);
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Printing is only supported on Web: $printUrl'),
+                                    content: Text('Printing is only supported on Web: $localInvoiceUrl'),
                                     duration: const Duration(seconds: 3),
                                   ),
                                 );
