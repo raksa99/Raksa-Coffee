@@ -310,6 +310,74 @@
       font-size: 14px;
       color: #A5968E;
     }
+
+    /* Print styles */
+    @media print {
+      body {
+        background: none !important;
+        background-color: white !important;
+        min-height: auto;
+        padding: 0;
+        margin: 0;
+      }
+      .receipt-card {
+        box-shadow: none !important;
+        border: none !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        animation: none !important;
+        background: white !important;
+      }
+      .header {
+        background: none !important;
+        background-color: #fcfcfc !important;
+        color: #000 !important;
+        padding: 10px 0 !important;
+      }
+      .header::after {
+        display: none !important;
+      }
+      .shop-name, .shop-tagline, .shop-address {
+        color: #000 !important;
+      }
+      .logo-circle {
+        border-color: #000 !important;
+        background: none !important;
+      }
+      .invoice-badge {
+        background: #f0f0f0 !important;
+        color: #000 !important;
+        border: 1px solid #ccc !important;
+      }
+      .item-qty {
+        background: #f0f0f0 !important;
+        color: #000 !important;
+        border: 1px solid #ccc !important;
+      }
+      .total-block {
+        background: #f9f9f9 !important;
+        border: 1px solid #eee !important;
+      }
+      .total-label, .total-value, .total-label.khr, .total-value.khr {
+        color: #000 !important;
+      }
+      .payment-badge {
+        background: none !important;
+        border: 1px solid #000 !important;
+        color: #000 !important;
+      }
+      .payment-badge .check {
+        background: #000 !important;
+        color: #fff !important;
+      }
+      .footer::before {
+        display: none !important;
+      }
+      .footer-brand {
+        color: #000 !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -446,6 +514,14 @@
     // Run
     const data = getInvoiceData();
     renderInvoice(data);
+
+    // Check if auto-print is requested
+    const printParams = new URLSearchParams(window.location.search);
+    if (printParams.get('print') === 'true') {
+      setTimeout(() => {
+        window.print();
+      }, 500);
+    }
   </script>
 </body>
 </html>

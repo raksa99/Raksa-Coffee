@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'dart:js' as js;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -407,12 +409,19 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Simulating print (via Bluetooth thermal printer)...'),
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
+                              final receiptCard = ModernReceiptCard(order: state.order);
+                              final invoiceUrl = receiptCard.buildInvoiceQrData();
+                              final printUrl = '$invoiceUrl&print=true';
+                              if (kIsWeb) {
+                                js.context.callMethod('open', [printUrl]);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Printing is only supported on Web: $printUrl'),
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              }
                             },
                             icon: const Icon(Icons.print_outlined),
                             label: Text('printReceipt'.tr(context)),

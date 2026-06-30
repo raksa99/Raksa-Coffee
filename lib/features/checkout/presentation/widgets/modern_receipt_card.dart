@@ -359,7 +359,7 @@ class ModernReceiptCard extends StatelessWidget {
                               border: Border.all(color: borderColor),
                             ),
                             child: QrImageView(
-                              data: _buildInvoiceQrData(),
+                              data: buildInvoiceQrData(),
                               version: QrVersions.auto,
                               size: 120,
                               backgroundColor: Colors.white,
@@ -391,7 +391,7 @@ class ModernReceiptCard extends StatelessWidget {
     );
   }
 
-  String _buildInvoiceQrData() {
+  String buildInvoiceQrData() {
     final invoice = {
       'shop': 'Raksa Coffee',
       'address': 'Sangkat Phnom Penh Thmey, Khan Sen Sok, Phnom Penh',
