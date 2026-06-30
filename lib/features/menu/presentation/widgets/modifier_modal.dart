@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/animations.dart';
 import '../../../cart/domain/models/cart_item.dart';
 import '../../domain/models/modifier.dart';
 import '../../domain/models/product.dart';
@@ -217,58 +218,60 @@ class _ModifierModalState extends State<ModifierModal> {
                           runSpacing: 8,
                           children: group.options.map((option) {
                             final isSelected = currentSelections.any((e) => e.id == option.id);
-                            return InkWell(
-                              onTap: () => _toggleOption(group, option),
-                              borderRadius: BorderRadius.circular(12),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 150),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? theme.colorScheme.primary
-                                      : (isDark ? const Color(0xFF1E1A18) : Colors.white),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
+                            return ScaleBouncePressReaction(
+                              child: InkWell(
+                                onTap: () => _toggleOption(group, option),
+                                borderRadius: BorderRadius.circular(12),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  decoration: BoxDecoration(
                                     color: isSelected
                                         ? theme.colorScheme.primary
-                                        : (isDark ? const Color(0xFF38312E) : const Color(0xFFEADFD3)),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: isSelected
-                                      ? [
-                                          BoxShadow(
-                                            color: theme.colorScheme.primary.withAlpha(50),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 2),
-                                          )
-                                        ]
-                                      : null,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      option.name,
-                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : (isDark ? const Color(0xFFF7F3EE) : const Color(0xFF2C1B14)),
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                      ),
+                                        : (isDark ? const Color(0xFF1E1A18) : Colors.white),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? theme.colorScheme.primary
+                                          : (isDark ? const Color(0xFF38312E) : const Color(0xFFEADFD3)),
+                                      width: 1.5,
                                     ),
-                                    if (option.price > 0) ...[
-                                      const SizedBox(width: 6),
+                                    boxShadow: isSelected
+                                        ? [
+                                            BoxShadow(
+                                              color: theme.colorScheme.primary.withAlpha(50),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            )
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
                                       Text(
-                                        '+${CurrencyFormatter.format(option.price)}',
-                                        style: theme.textTheme.bodySmall?.copyWith(
+                                        option.name,
+                                        style: theme.textTheme.bodyMedium?.copyWith(
                                           color: isSelected
-                                              ? Colors.white70
-                                              : theme.colorScheme.secondary,
-                                          fontWeight: FontWeight.w600,
+                                              ? Colors.white
+                                              : (isDark ? const Color(0xFFF7F3EE) : const Color(0xFF2C1B14)),
+                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                         ),
                                       ),
+                                      if (option.price > 0) ...[
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '+${CurrencyFormatter.format(option.price)}',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: isSelected
+                                                ? Colors.white70
+                                                : theme.colorScheme.secondary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ],
-                                  ],
+                                  ),
                                 ),
                               ),
                             );
@@ -299,12 +302,15 @@ class _ModifierModalState extends State<ModifierModal> {
                     ),
                     child: Row(
                       children: [
-                        IconButton(
-                          onPressed: _quantity > 1
-                              ? () => setState(() => _quantity--)
-                              : null,
-                          icon: const Icon(Icons.remove, size: 20),
-                          color: theme.colorScheme.primary,
+                        ScaleBouncePressReaction(
+                          scaleFactor: _quantity > 1 ? 0.92 : 1.0,
+                          child: IconButton(
+                            onPressed: _quantity > 1
+                                ? () => setState(() => _quantity--)
+                                : null,
+                            icon: const Icon(Icons.remove, size: 20),
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -315,10 +321,12 @@ class _ModifierModalState extends State<ModifierModal> {
                             ),
                           ),
                         ),
-                        IconButton(
-                          onPressed: () => setState(() => _quantity++),
-                          icon: const Icon(Icons.add, size: 20),
-                          color: theme.colorScheme.primary,
+                        ScaleBouncePressReaction(
+                          child: IconButton(
+                            onPressed: () => setState(() => _quantity++),
+                            icon: const Icon(Icons.add, size: 20),
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
                       ],
                     ),
@@ -327,44 +335,46 @@ class _ModifierModalState extends State<ModifierModal> {
                   
                   // Submit Add-to-Cart
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Validate required modifier groups
-                        for (var group in widget.product.modifierGroups) {
-                          if (group.isRequired && (_selections[group.id]?.isEmpty ?? true)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Please select an option for ${group.name}'),
-                                backgroundColor: theme.colorScheme.error,
-                              ),
-                            );
-                            return;
+                    child: ScaleBouncePressReaction(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // Validate required modifier groups
+                          for (var group in widget.product.modifierGroups) {
+                            if (group.isRequired && (_selections[group.id]?.isEmpty ?? true)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Please select an option for ${group.name}'),
+                                  backgroundColor: theme.colorScheme.error,
+                                ),
+                              );
+                              return;
+                            }
                           }
-                        }
 
-                        // Create CartItem
-                        final cartItem = CartItem(
-                          id: const Uuid().v4(),
-                          product: widget.product,
-                          quantity: _quantity,
-                          selectedModifiers: Map.from(_selections),
-                          notes: _notesController.text,
-                        );
-                        
-                        widget.onAddToCart(cartItem);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          // Create CartItem
+                          final cartItem = CartItem(
+                            id: const Uuid().v4(),
+                            product: widget.product,
+                            quantity: _quantity,
+                            selectedModifiers: Map.from(_selections),
+                            notes: _notesController.text,
+                          );
+                          
+                          widget.onAddToCart(cartItem);
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        'Add to Cart • ${CurrencyFormatter.format(_currentTotalPrice)}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        child: Text(
+                          'Add to Cart • ${CurrencyFormatter.format(_currentTotalPrice)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),

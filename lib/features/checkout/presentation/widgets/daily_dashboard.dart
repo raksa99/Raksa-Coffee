@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/utils/receipt_formatter.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/models/order.dart';
 import '../bloc/checkout_bloc.dart';
 import '../bloc/checkout_event.dart';
 import '../bloc/checkout_state.dart';
+import '../../../../core/utils/animations.dart';
+import 'modern_receipt_card.dart';
 
 class DailyDashboard extends StatefulWidget {
   const DailyDashboard({super.key});
@@ -24,9 +25,6 @@ class _DailyDashboardState extends State<DailyDashboard> {
   }
 
   void _showReprintReceiptDialog(BuildContext context, Order order) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final receiptText = ReceiptFormatter.format(order);
-
     showDialog(
       context: context,
       builder: (dialogContext) {
@@ -41,27 +39,10 @@ class _DailyDashboardState extends State<DailyDashboard> {
               ),
             ],
           ),
-          content: Container(
+          content: SizedBox(
             width: 400,
             height: 480,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1A18) : const Color(0xFFF3EFE9),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
-              ),
-            ),
-            child: SingleChildScrollView(
-              child: Text(
-                receiptText,
-                style: const TextStyle(
-                  fontFamily: 'Courier',
-                  fontSize: 13,
-                  height: 1.3,
-                ),
-              ),
-            ),
+            child: ModernReceiptCard(order: order),
           ),
           actions: [
             OutlinedButton.icon(
@@ -206,109 +187,124 @@ class _DailyDashboardState extends State<DailyDashboard> {
           mainAxisSpacing: 12,
           childAspectRatio: isMobile ? 1.55 : 1.5,
           children: [
-            _buildKpiCard(
-              title: 'grossSales'.tr(context).toUpperCase(),
-              value: CurrencyFormatter.format(totalSales),
-              icon: Icons.payments_outlined,
-              color: theme.colorScheme.primary,
-              context: context,
+            StaggeredEntranceAnimation(
+              index: 0,
+              child: _buildKpiCard(
+                title: 'grossSales'.tr(context).toUpperCase(),
+                value: CurrencyFormatter.format(totalSales),
+                icon: Icons.payments_outlined,
+                color: theme.colorScheme.primary,
+                context: context,
+              ),
             ),
-            _buildKpiCard(
-              title: 'ordersCount'.tr(context).toUpperCase(),
-              value: '$totalOrders',
-              icon: Icons.receipt_long_outlined,
-              color: theme.colorScheme.secondary,
-              context: context,
+            StaggeredEntranceAnimation(
+              index: 1,
+              child: _buildKpiCard(
+                title: 'ordersCount'.tr(context).toUpperCase(),
+                value: '$totalOrders',
+                icon: Icons.receipt_long_outlined,
+                color: theme.colorScheme.secondary,
+                context: context,
+              ),
             ),
-            _buildKpiCard(
-              title: 'avgTicket'.tr(context).toUpperCase(),
-              value: CurrencyFormatter.format(avgTicket),
-              icon: Icons.analytics_outlined,
-              color: const Color(0xFF4A7C59),
-              context: context,
+            StaggeredEntranceAnimation(
+              index: 2,
+              child: _buildKpiCard(
+                title: 'avgTicket'.tr(context).toUpperCase(),
+                value: CurrencyFormatter.format(avgTicket),
+                icon: Icons.analytics_outlined,
+                color: const Color(0xFF4A7C59),
+                context: context,
+              ),
             ),
-            _buildKpiCard(
-              title: 'ITEMS DISPENSED',
-              value: '${itemQuantities.values.fold(0, (sum, val) => sum + val)}',
-              icon: Icons.coffee_outlined,
-              color: const Color(0xFF537A9B),
-              context: context,
+            StaggeredEntranceAnimation(
+              index: 3,
+              child: _buildKpiCard(
+                title: 'ITEMS DISPENSED',
+                value: '${itemQuantities.values.fold(0, (sum, val) => sum + val)}',
+                icon: Icons.coffee_outlined,
+                color: const Color(0xFF537A9B),
+                context: context,
+              ),
             ),
           ],
         );
 
         // Top Selling list
-        final topSellingCard = Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.stars_outlined, color: theme.colorScheme.secondary),
-                    const SizedBox(width: 8),
-                    Text(
-                      'topSelling'.tr(context),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+        final topSellingCard = StaggeredEntranceAnimation(
+          index: 4,
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.stars_outlined, color: theme.colorScheme.secondary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'topSelling'.tr(context),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 20),
-                if (topItems.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Text('No items sold yet today.'),
-                    ),
-                  )
-                else
-                  ...topItems.map((entry) {
-                    final rank = topItems.indexOf(entry) + 1;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: rank == 1
-                                  ? theme.colorScheme.secondary
-                                  : (isDark ? const Color(0xFF26211F) : const Color(0xFFF3EFE9)),
-                              shape: BoxShape.circle,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              '$rank',
-                              style: TextStyle(
-                                color: rank == 1 ? Colors.white : theme.textTheme.bodyMedium?.color,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  if (topItems.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text('No items sold yet today.'),
+                      ),
+                    )
+                  else
+                    ...topItems.map((entry) {
+                      final rank = topItems.indexOf(entry) + 1;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: rank == 1
+                                    ? theme.colorScheme.secondary
+                                    : (isDark ? const Color(0xFF26211F) : const Color(0xFFF3EFE9)),
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '$rank',
+                                style: TextStyle(
+                                  color: rank == 1 ? Colors.white : theme.textTheme.bodyMedium?.color,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              entry.key,
-                              style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                entry.key,
+                                style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                              ),
                             ),
-                          ),
-                          Text(
-                            '${entry.value} sold',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.bold,
+                            Text(
+                              '${entry.value} sold',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-              ],
+                          ],
+                        ),
+                      );
+                    }),
+                ],
+              ),
             ),
           ),
         );
@@ -324,48 +320,59 @@ class _DailyDashboardState extends State<DailyDashboard> {
               final timeStr = '${order.dateTime.hour.toString().padLeft(2, '0')}:${order.dateTime.minute.toString().padLeft(2, '0')}';
               final itemCount = order.items.fold(0, (sum, i) => sum + i.quantity);
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF131110) : const Color(0xFFFAF6F0),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
+              return StaggeredEntranceAnimation(
+                index: index + 5,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1D1918) : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF2A2321) : const Color(0xFFE8DFD5),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(isDark ? 10 : 3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ),
-                child: InkWell(
-                  onTap: () => _showReprintReceiptDialog(context, order),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Order #${order.orderNumber}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$timeStr • $itemCount items • ${order.paymentMethod?.name.toUpperCase()}',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        Text(
-                          CurrencyFormatter.format(order.total),
-                          style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                  child: InkWell(
+                    onTap: () => _showReprintReceiptDialog(context, order),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Order #${order.orderNumber}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$timeStr • $itemCount items • ${order.paymentMethod?.name.toUpperCase()}',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.chevron_right, size: 18),
-                      ],
+                          const Spacer(),
+                          Text(
+                            CurrencyFormatter.format(order.total),
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.chevron_right, size: 18),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -481,13 +488,21 @@ class _DailyDashboardState extends State<DailyDashboard> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1A18) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? const Color(0xFF151211) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
+          color: isDark ? const Color(0xFF2A2321) : const Color(0xFFE8DFD5),
+          width: 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(isDark ? 15 : 5),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -499,19 +514,30 @@ class _DailyDashboardState extends State<DailyDashboard> {
               Text(
                 title,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.1,
-                  color: isDark ? const Color(0xFFA5968E) : const Color(0xFF705D53),
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.8,
+                  color: isDark ? const Color(0xFFA3958F) : const Color(0xFF6E5E57),
+                  fontSize: 10,
+                  fontFamily: 'Outfit',
                 ),
               ),
-              Icon(icon, color: color, size: 20),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(20),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 16),
+              ),
             ],
           ),
           Text(
             value,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: color,
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF1F1511),
               fontWeight: FontWeight.bold,
+              fontSize: 22,
+              fontFamily: 'Outfit',
             ),
           ),
         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/animations.dart';
 import '../../domain/models/cart_item.dart';
 
 class CartItemTile extends StatelessWidget {
@@ -109,21 +110,23 @@ class CartItemTile extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Decrement / Delete
-                  InkWell(
-                    onTap: () => onQuantityChanged(item.quantity - 1),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF2D2927) : const Color(0xFFF3EFE9),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        item.quantity == 1 ? Icons.delete_outline : Icons.remove,
-                        size: 16,
-                        color: item.quantity == 1 
-                            ? theme.colorScheme.error 
-                            : theme.colorScheme.primary,
+                  ScaleBouncePressReaction(
+                    child: InkWell(
+                      onTap: () => onQuantityChanged(item.quantity - 1),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2D2927) : const Color(0xFFF3EFE9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          item.quantity == 1 ? Icons.delete_outline : Icons.remove,
+                          size: 16,
+                          color: item.quantity == 1 
+                              ? theme.colorScheme.error 
+                              : theme.colorScheme.primary,
+                        ),
                       ),
                     ),
                   ),
@@ -139,19 +142,21 @@ class CartItemTile extends StatelessWidget {
                   ),
                   
                   // Increment
-                  InkWell(
-                    onTap: () => onQuantityChanged(item.quantity + 1),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF2D2927) : const Color(0xFFF3EFE9),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        size: 16,
-                        color: theme.colorScheme.primary,
+                  ScaleBouncePressReaction(
+                    child: InkWell(
+                      onTap: () => onQuantityChanged(item.quantity + 1),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2D2927) : const Color(0xFFF3EFE9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.add,
+                          size: 16,
+                          color: theme.colorScheme.primary,
+                        ),
                       ),
                     ),
                   ),

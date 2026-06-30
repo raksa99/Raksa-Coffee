@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
+import '../../../../core/network/local_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../checkout/domain/models/order.dart';
 import '../../../checkout/presentation/bloc/checkout_bloc.dart';
@@ -8,8 +10,9 @@ import '../bloc/cart_bloc.dart';
 import '../bloc/cart_event.dart';
 import '../bloc/cart_state.dart';
 import '../../../../l10n/app_localizations.dart';
-import 'cart_item_tile.dart';
 import 'queue_list_dialog.dart';
+import 'animated_cart_list.dart';
+import '../../../../core/utils/animations.dart';
 
 class CartSidebar extends StatefulWidget {
   const CartSidebar({super.key});
@@ -192,14 +195,24 @@ class _CartSidebarState extends State<CartSidebar> {
 
     return BlocBuilder<CartBloc, CartState>(
       builder: (context, state) {
+        final isMobile = MediaQuery.of(context).size.width < 750;
         return Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1A18) : Colors.white,
-            border: Border(
-              left: BorderSide(
-                color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
-              ),
-            ),
+            color: isDark ? const Color(0xFF151211) : Colors.white,
+            borderRadius: isMobile
+                ? BorderRadius.zero
+                : const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    bottomLeft: Radius.circular(24),
+                  ),
+            border: isMobile
+                ? null
+                : Border(
+                    left: BorderSide(
+                      color: isDark ? const Color(0xFF2A2321) : const Color(0xFFE8DFD5),
+                      width: 1.2,
+                    ),
+                  ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -210,10 +223,13 @@ class _CartSidebarState extends State<CartSidebar> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'currentOrder'.tr(context),
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    Flexible(
+                      child: Text(
+                        'currentOrder'.tr(context),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     
@@ -291,20 +307,13 @@ class _CartSidebarState extends State<CartSidebar> {
                           ],
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: state.items.length,
-                        itemBuilder: (context, index) {
-                          final item = state.items[index];
-                          return CartItemTile(
-                            item: item,
-                            onQuantityChanged: (q) {
-                              context.read<CartBloc>().add(UpdateCartItemQuantity(item.id, q));
-                            },
-                            onRemove: () {
-                              context.read<CartBloc>().add(RemoveFromCart(item.id));
-                            },
-                          );
+                    : AnimatedCartList(
+                        items: state.items,
+                        onQuantityChanged: (item, q) {
+                          context.read<CartBloc>().add(UpdateCartItemQuantity(item.id, q));
+                        },
+                        onRemove: (item) {
+                          context.read<CartBloc>().add(RemoveFromCart(item.id));
                         },
                       ),
               ),
@@ -313,153 +322,214 @@ class _CartSidebarState extends State<CartSidebar> {
 
               // Billing and actions block
               Container(
-                color: isDark ? const Color(0xFF131110) : const Color(0xFFFAF6F0),
+                color: isDark ? const Color(0xFF151211) : const Color(0xFFFAF8F5),
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildRow(
-                      'Subtotal', 
-                      CurrencyFormatter.formatUsd(state.subtotal),
-                      theme,
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1D1918) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF2A2321) : const Color(0xFFE8DFD5),
+                      width: 1.2,
                     ),
-                    
-                    // Clickable discount row
-                    InkWell(
-                      onTap: state.items.isEmpty ? null : () => _showDiscountDialog(context, state),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  state.discountValue > 0
-                                      ? 'Discount (${state.discountType == DiscountType.percentage ? '${state.discountValue.toStringAsFixed(0)}%' : 'Fixed'})'
-                                      : 'Add Discount',
-                                  style: TextStyle(
-                                    color: state.discountValue > 0 
-                                        ? theme.colorScheme.primary 
-                                        : theme.colorScheme.secondary,
-                                    fontWeight: state.discountValue > 0 ? FontWeight.bold : FontWeight.normal,
-                                  ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(isDark ? 30 : 10),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildRow(
+                        'Subtotal', 
+                        CurrencyFormatter.formatUsd(state.subtotal),
+                        theme,
+                      ),
+                      
+                      // Clickable discount row
+                      InkWell(
+                        onTap: state.items.isEmpty ? null : () => _showDiscountDialog(context, state),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        state.discountValue > 0
+                                            ? 'Discount (${state.discountType == DiscountType.percentage ? '${state.discountValue.toStringAsFixed(0)}%' : 'Fixed'})'
+                                            : 'Add Discount',
+                                        style: TextStyle(
+                                          color: state.discountValue > 0 
+                                              ? theme.colorScheme.primary 
+                                              : theme.colorScheme.secondary,
+                                          fontWeight: state.discountValue > 0 ? FontWeight.bold : FontWeight.normal,
+                                          fontFamily: 'Outfit',
+                                          fontSize: 13,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.edit_outlined, 
+                                      size: 14, 
+                                      color: theme.colorScheme.secondary,
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.edit_outlined, 
-                                  size: 14, 
-                                  color: theme.colorScheme.secondary,
-                                ),
-                              ],
-                            ),
-                            Text(
-                              state.discountValue > 0
-                                  ? '-${CurrencyFormatter.formatUsd(state.discountAmount)}'
-                                  : '\$0.00',
-                              style: TextStyle(
-                                color: state.discountValue > 0 ? theme.colorScheme.primary : null,
-                                fontWeight: state.discountValue > 0 ? FontWeight.bold : FontWeight.normal,
                               ),
-                            ),
-                          ],
+                              Text(
+                                state.discountValue > 0
+                                    ? '-${CurrencyFormatter.formatUsd(state.discountAmount)}'
+                                    : '\$0.00',
+                                style: TextStyle(
+                                  color: state.discountValue > 0 ? theme.colorScheme.primary : null,
+                                  fontWeight: state.discountValue > 0 ? FontWeight.bold : FontWeight.normal,
+                                  fontFamily: 'Outfit',
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    
-                    _buildRow(
-                      'Tax (8%)', 
-                      CurrencyFormatter.formatUsd(state.taxAmount),
-                      theme,
-                    ),
-                    
-                    const SizedBox(height: 8),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    
-                    _buildRow(
-                      'Total (USD)', 
-                      CurrencyFormatter.formatUsd(state.total),
-                      theme,
-                      isBold: true,
-                      fontSize: 15,
-                    ),
-                    _buildRow(
-                      'Total (KHR)', 
-                      CurrencyFormatter.formatKhr(state.total),
-                      theme,
-                      isBold: true,
-                      fontSize: 15,
-                    ),
-                    
-                    const SizedBox(height: 16),
+                      
+                      _buildRow(
+                        'Tax (8%)', 
+                        CurrencyFormatter.formatUsd(state.taxAmount),
+                        theme,
+                      ),
+                      
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 1.0,
+                        color: isDark ? const Color(0xFF2A2321) : const Color(0xFFE8DFD5),
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      _buildRow(
+                        'Total (USD)', 
+                        CurrencyFormatter.formatUsd(state.total),
+                        theme,
+                        isBold: true,
+                        fontSize: 15,
+                      ),
+                      _buildRow(
+                        'Total (KHR)', 
+                        CurrencyFormatter.formatKhr(state.total),
+                        theme,
+                        isBold: true,
+                        fontSize: 15,
+                      ),
+                      
+                      const SizedBox(height: 16),
 
-                    // Actions buttons
-                    Row(
-                      children: [
-                        // HOLD button
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: state.items.isEmpty
-                                ? null
-                                : () => _showHoldOrderDialog(context),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                      // Actions buttons
+                      Row(
+                        children: [
+                          // HOLD button
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: state.items.isEmpty
+                                  ? null
+                                  : () => _showHoldOrderDialog(context),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
                               ),
+                              child: Text('holdOrder'.tr(context)),
                             ),
-                            child: Text('holdOrder'.tr(context)),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        
-                        // PAY button
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: state.items.isEmpty
-                                ? null
-                                : () {
-                                    // Generate Order invoice model
-                                    final currentOrder = Order(
-                                      id: '', // Generated in checkout process
-                                      orderNumber: '', // Generated in checkout process
-                                      items: state.items,
-                                      discountType: state.discountType,
-                                      discountValue: state.discountValue,
-                                      taxRate: state.taxRate,
-                                      dateTime: DateTime.now(),
-                                      status: OrderStatus.queued,
-                                    );
-
-                                    // Open checkout modal
-                                    showDialog(
-                                      context: context,
-                                      barrierDismissible: false,
-                                      builder: (_) {
-                                        return BlocProvider.value(
-                                          value: context.read<CheckoutBloc>(),
-                                          child: BlocProvider.value(
-                                            value: context.read<CartBloc>(),
-                                            child: CheckoutDialog(order: currentOrder),
+                          const SizedBox(width: 8),
+                          
+                          // PAY button with Premium Gradient
+                          Expanded(
+                            child: AnimatedOpacity(
+                              opacity: state.items.isEmpty ? 0.6 : 1.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: ScaleBouncePressReaction(
+                                scaleFactor: state.items.isEmpty ? 1.0 : 0.95,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: state.items.isEmpty
+                                        ? null
+                                        : LinearGradient(
+                                            colors: [
+                                              theme.colorScheme.primary,
+                                              theme.colorScheme.primary.withAlpha(200),
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
                                           ),
-                                        );
-                                      },
-                                    );
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(28),
+                                    boxShadow: state.items.isEmpty
+                                        ? []
+                                        : [
+                                            BoxShadow(
+                                              color: theme.colorScheme.primary.withAlpha(60),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed: state.items.isEmpty
+                                        ? null
+                                        : () {
+                                            final orderId = const Uuid().v4();
+                                            final dailyOrdersCount = LocalDatabase.getSalesHistory().length + LocalDatabase.getQueuedOrders().length + 1;
+                                            final orderNumber = dailyOrdersCount.toString().padLeft(4, '0');
+
+                                            // Generate Order invoice model
+                                            final currentOrder = Order(
+                                              id: orderId,
+                                              orderNumber: orderNumber,
+                                              items: state.items,
+                                              discountType: state.discountType,
+                                              discountValue: state.discountValue,
+                                              taxRate: state.taxRate,
+                                              dateTime: DateTime.now(),
+                                              status: OrderStatus.queued,
+                                            );
+
+                                            // Open checkout modal
+                                            showDialog(
+                                              context: context,
+                                              barrierDismissible: false,
+                                              builder: (_) {
+                                                return BlocProvider.value(
+                                                  value: context.read<CheckoutBloc>(),
+                                                  child: BlocProvider.value(
+                                                    value: context.read<CartBloc>(),
+                                                    child: CheckoutDialog(order: currentOrder),
+                                                  ),
+                                                );
+                                              },
+                                            );
+                                          },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                    ),
+                                    child: Text('checkout'.tr(context)),
+                                  ),
+                                ),
                               ),
                             ),
-                            child: Text('checkout'.tr(context)),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

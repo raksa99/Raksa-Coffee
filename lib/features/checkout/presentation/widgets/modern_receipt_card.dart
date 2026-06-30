@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/models/order.dart';
@@ -44,15 +46,31 @@ class ModernReceiptCard extends StatelessWidget {
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
+                      decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.local_cafe,
-                        color: Colors.white,
-                        size: 24,
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          filterQuality: FilterQuality.high,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.local_cafe,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -67,11 +85,15 @@ class ModernReceiptCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '123 Espresso Blvd, Suite 100',
+                      'Sangkat Phnom Penh Thmey, Khan Sen Sok',
                       style: TextStyle(fontSize: 12, color: mutedText),
                     ),
                     Text(
-                      'Tel: (555) 019-2831',
+                      'Phnom Penh',
+                      style: TextStyle(fontSize: 12, color: mutedText),
+                    ),
+                    Text(
+                      'Tel: +855 96 798 2573',
                       style: TextStyle(fontSize: 12, color: mutedText),
                     ),
                   ],
@@ -324,11 +346,32 @@ class ModernReceiptCard extends StatelessWidget {
 
                     const SizedBox(height: 24),
                     
-                    // Barcode Simulator
+                    // E-Invoice QR Code
                     Center(
                       child: Column(
                         children: [
-                          Icon(Icons.qr_code_2, size: 72, color: isDark ? Colors.white70 : Colors.black87),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: borderColor),
+                            ),
+                            child: QrImageView(
+                              data: _buildInvoiceQrData(),
+                              version: QrVersions.auto,
+                              size: 120,
+                              backgroundColor: Colors.white,
+                              eyeStyle: const QrEyeStyle(
+                                eyeShape: QrEyeShape.square,
+                                color: Color(0xFF1B1411),
+                              ),
+                              dataModuleStyle: const QrDataModuleStyle(
+                                dataModuleShape: QrDataModuleShape.square,
+                                color: Color(0xFF1B1411),
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           Text(
                             'scanViewEInvoice'.tr(context),
@@ -345,6 +388,41 @@ class ModernReceiptCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _buildInvoiceQrData() {
+    final invoice = {
+      'shop': 'Raksa Coffee',
+      'address': 'Sangkat Phnom Penh Thmey, Khan Sen Sok, Phnom Penh',
+      'tel': '+855 96 798 2573',
+      'invoice': '#${order.orderNumber}',
+      'date': '${order.dateTime.year}-${order.dateTime.month.toString().padLeft(2, '0')}-${order.dateTime.day.toString().padLeft(2, '0')}',
+      'time': '${order.dateTime.hour.toString().padLeft(2, '0')}:${order.dateTime.minute.toString().padLeft(2, '0')}',
+      'customer': order.customerName.isNotEmpty ? order.customerName : 'Walk-in',
+      'items': order.items.map((item) => {
+        'name': item.product.name,
+        'qty': item.quantity,
+        'price': '\$${item.totalPrice.toStringAsFixed(2)}',
+      }).toList(),
+      'subtotal': '\$${order.subtotal.toStringAsFixed(2)}',
+      'discount': '\$${order.discountAmount.toStringAsFixed(2)}',
+      'tax': '\$${order.taxAmount.toStringAsFixed(2)}',
+      'total_usd': '\$${order.total.toStringAsFixed(2)}',
+      'total_khr': '${(order.total * 4100).toStringAsFixed(0)}៛',
+      'payment': order.paymentMethod == PaymentMethod.cash
+          ? 'Cash'
+          : order.paymentMethod == PaymentMethod.card
+              ? 'Card'
+              : 'QR/Bakong',
+    };
+    final jsonStr = jsonEncode(invoice);
+    final base64Data = base64Url.encode(utf8.encode(jsonStr));
+    // Dynamically build the URL including the base path (e.g., /Raksa-Coffee/)
+    String basePath = Uri.base.path;
+    if (!basePath.endsWith('/')) {
+      basePath = '$basePath/';
+    }
+    return '${Uri.base.origin}${basePath}invoice.html?data=$base64Data';
   }
 
   Widget _buildRow(String label, String value, {required bool isBold, required ThemeData theme, Color? valueColor}) {

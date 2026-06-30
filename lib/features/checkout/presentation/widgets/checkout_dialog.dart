@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -15,6 +16,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../../../../core/utils/khqr_generator.dart';
 import '../../../../core/config/env_config.dart';
+import '../../../../core/utils/animations.dart';
 
 class CheckoutDialog extends StatefulWidget {
   final Order order;
@@ -36,6 +38,109 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
   String? _dynamicQrString;
   String _qrError = '';
 
+  Timer? _bakongPollingTimer;
+  bool _isCheckingBakong = false;
+
+  void _startBakongPolling(String qrString) {
+    _stopBakongPolling();
+    if (EnvConfig.bakongToken.isEmpty) {
+      debugPrint('Bakong Bearer Token is empty. Automatic polling disabled.');
+      return;
+    }
+
+    final md5Hash = md5.convert(utf8.encode(qrString)).toString();
+    debugPrint('Starting Bakong API Polling for MD5: $md5Hash');
+
+    _bakongPollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!_isCheckingBakong && _selectedMethod == PaymentMethod.qrCode) {
+        _checkBakongPayment(md5Hash);
+      }
+    });
+  }
+
+  void _stopBakongPolling() {
+    _bakongPollingTimer?.cancel();
+    _bakongPollingTimer = null;
+  }
+
+  String _pollingStatusMessage = 'Waiting for payment...';
+  String? _pollingError;
+
+  Future<void> _checkBakongPayment(String md5Hash) async {
+    final rawUrl = '${EnvConfig.bakongApiBaseUrl}/v1/check_transaction_by_md5';
+    final urlString = EnvConfig.corsProxyUrl.isNotEmpty ? '${EnvConfig.corsProxyUrl}$rawUrl' : rawUrl;
+    final url = Uri.parse(urlString);
+    
+    _isCheckingBakong = true;
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${EnvConfig.bakongToken}',
+        },
+        body: jsonEncode({
+          'md5': md5Hash,
+        }),
+      );
+
+      if (!mounted || _selectedMethod != PaymentMethod.qrCode) {
+        _stopBakongPolling();
+        return;
+      }
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> resData = jsonDecode(response.body);
+        
+        setState(() {
+          _pollingError = null;
+          if (resData['responseCode'] == 0) {
+            final data = resData['data'];
+            if (data != null) {
+              _pollingStatusMessage = 'Payment received! Amount: ${data['amount']} ${data['currency']}';
+            } else {
+              _pollingStatusMessage = 'Payment confirmed!';
+            }
+          } else {
+            // responseCode != 0 means transaction not found on server yet (normal until they scan and pay)
+            _pollingStatusMessage = 'QR code generated. Waiting for payment...';
+          }
+        });
+
+        if (resData['responseCode'] == 0 && resData['data'] != null) {
+          _stopBakongPolling();
+          _confirmQrPayment();
+        }
+      } else {
+        String errorMsg = response.body;
+        if (errorMsg.contains('<html') || errorMsg.contains('<HTML')) {
+          errorMsg = 'Request blocked by Cloudflare/WAF (403 Forbidden).';
+        }
+        setState(() {
+          _pollingError = 'API Response ${response.statusCode}: $errorMsg';
+        });
+        debugPrint('Bakong Polling Error (${response.statusCode}): ${response.body}');
+      }
+    } catch (e) {
+      setState(() {
+        _pollingError = 'Network error: $e';
+      });
+      debugPrint('Bakong API Polling exception: $e');
+    } finally {
+      _isCheckingBakong = false;
+    }
+  }
+
+  void _confirmQrPayment() {
+    context.read<CheckoutBloc>().add(
+          ProcessPayment(
+            order: widget.order,
+            paymentMethod: PaymentMethod.qrCode,
+            amountPaid: widget.order.total,
+          ),
+        );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +155,7 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
 
   @override
   void dispose() {
+    _stopBakongPolling();
     super.dispose();
   }
 
@@ -89,6 +195,9 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
           _dynamicQrString = qrPayload;
           _isLoadingQr = false;
         });
+        if (_selectedMethod == PaymentMethod.qrCode && qrPayload.isNotEmpty) {
+          _startBakongPolling(qrPayload);
+        }
       } catch (e) {
         setState(() {
           _qrError = 'Failed to generate KHQR locally: $e';
@@ -248,7 +357,21 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.check_circle_outline, color: Colors.green, size: 36),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0.0, end: 1.0),
+                          duration: const Duration(milliseconds: 700),
+                          curve: Curves.elasticOut,
+                          builder: (context, value, child) {
+                            return Transform.rotate(
+                              angle: (1.0 - value) * 0.4,
+                              child: Transform.scale(
+                                scale: value,
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 40),
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           'paymentSuccessful'.tr(context),
@@ -262,7 +385,21 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                     ),
                     const SizedBox(height: 16),
                     Expanded(
-                      child: ModernReceiptCard(order: state.order),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 550),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) {
+                          return Opacity(
+                            opacity: value,
+                            child: Transform.translate(
+                              offset: Offset(0.0, (1.0 - value) * 24),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: ModernReceiptCard(order: state.order),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -305,11 +442,19 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
         final isMobile = size.width < 750;
 
         if (isMobile) {
-          final activeLayout = _selectedMethod == PaymentMethod.cash
-              ? _buildCashLayout(theme, isDark, true)
-              : (_selectedMethod == PaymentMethod.card
-                  ? _buildCardLayout(theme, isDark)
-                  : _buildQRLayout(theme, isDark));
+          final activeLayout = AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            child: KeyedSubtree(
+              key: ValueKey<PaymentMethod>(_selectedMethod),
+              child: _selectedMethod == PaymentMethod.cash
+                  ? _buildCashLayout(theme, isDark, true)
+                  : (_selectedMethod == PaymentMethod.card
+                      ? _buildCardLayout(theme, isDark)
+                      : _buildQRLayout(theme, isDark)),
+            ),
+          );
 
           return Dialog(
             insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -430,15 +575,19 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                       onPressed: isProcessing || (_selectedMethod == PaymentMethod.cash && _amountPaid < widget.order.total)
                           ? null
                           : () {
-                              context.read<CheckoutBloc>().add(
-                                    ProcessPayment(
-                                      order: widget.order,
-                                      paymentMethod: _selectedMethod,
-                                      amountPaid: _selectedMethod == PaymentMethod.cash 
-                                          ? _amountPaid 
-                                          : widget.order.total,
-                                    ),
-                                  );
+                              if (_selectedMethod == PaymentMethod.qrCode) {
+                                _confirmQrPayment();
+                              } else {
+                                context.read<CheckoutBloc>().add(
+                                      ProcessPayment(
+                                        order: widget.order,
+                                        paymentMethod: _selectedMethod,
+                                        amountPaid: _selectedMethod == PaymentMethod.cash 
+                                            ? _amountPaid 
+                                            : widget.order.total,
+                                      ),
+                                    );
+                              }
                             },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -455,7 +604,9 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                           : Text(
                               _selectedMethod == PaymentMethod.cash
                                   ? 'Complete Cash Sale'
-                                  : 'Authorise & Charge',
+                                  : (_selectedMethod == PaymentMethod.qrCode
+                                      ? 'Confirm Success on App Bakong'
+                                      : 'Authorise & Charge'),
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                     ),
@@ -516,16 +667,18 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                         
                         // Active Mode Layout
                         Expanded(
-                          child: IndexedStack(
-                            index: _selectedMethod.index,
-                            children: [
-                              // CASH CALCULATOR
-                              _buildCashLayout(theme, isDark, false),
-                              // CARD TERMINAL
-                              _buildCardLayout(theme, isDark),
-                              // QR WALLET
-                              _buildQRLayout(theme, isDark),
-                            ],
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            switchInCurve: Curves.easeInOut,
+                            switchOutCurve: Curves.easeInOut,
+                            child: KeyedSubtree(
+                              key: ValueKey<PaymentMethod>(_selectedMethod),
+                              child: _selectedMethod == PaymentMethod.cash
+                                  ? _buildCashLayout(theme, isDark, false)
+                                  : (_selectedMethod == PaymentMethod.card
+                                      ? _buildCardLayout(theme, isDark)
+                                      : _buildQRLayout(theme, isDark)),
+                            ),
                           ),
                         ),
                       ],
@@ -621,15 +774,19 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                           onPressed: isProcessing || (_selectedMethod == PaymentMethod.cash && _amountPaid < widget.order.total)
                               ? null
                               : () {
-                                  context.read<CheckoutBloc>().add(
-                                        ProcessPayment(
-                                          order: widget.order,
-                                          paymentMethod: _selectedMethod,
-                                          amountPaid: _selectedMethod == PaymentMethod.cash 
-                                              ? _amountPaid 
-                                              : widget.order.total,
-                                        ),
-                                      );
+                                  if (_selectedMethod == PaymentMethod.qrCode) {
+                                    _confirmQrPayment();
+                                  } else {
+                                    context.read<CheckoutBloc>().add(
+                                          ProcessPayment(
+                                            order: widget.order,
+                                            paymentMethod: _selectedMethod,
+                                            amountPaid: _selectedMethod == PaymentMethod.cash 
+                                                ? _amountPaid 
+                                                : widget.order.total,
+                                          ),
+                                        );
+                                  }
                                 },
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 18),
@@ -646,7 +803,9 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                               : Text(
                                   _selectedMethod == PaymentMethod.cash
                                       ? 'Complete Cash Sale'
-                                      : 'Authorise & Charge',
+                                      : (_selectedMethod == PaymentMethod.qrCode
+                                          ? 'Confirm Success on App Bakong'
+                                          : 'Authorise & Charge'),
                                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                 ),
                         ),
@@ -672,46 +831,53 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedMethod = method;
-            if (method != PaymentMethod.cash) {
-              _amountPaid = widget.order.total;
-            }
-          });
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected 
-                ? theme.colorScheme.primary 
-                : (isDark ? const Color(0xFF1E1A18) : Colors.white),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
+      child: ScaleBouncePressReaction(
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _selectedMethod = method;
+              if (method != PaymentMethod.cash) {
+                _amountPaid = widget.order.total;
+              }
+              if (method == PaymentMethod.qrCode && _dynamicQrString != null && _dynamicQrString!.isNotEmpty) {
+                _startBakongPolling(_dynamicQrString!);
+              } else {
+                _stopBakongPolling();
+              }
+            });
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
               color: isSelected 
                   ? theme.colorScheme.primary 
-                  : (isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3)),
-              width: 1.5,
+                  : (isDark ? const Color(0xFF1E1A18) : Colors.white),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected 
+                    ? theme.colorScheme.primary 
+                    : (isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3)),
+                width: 1.5,
+              ),
             ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? Colors.white : theme.colorScheme.secondary,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 12,
+            child: Column(
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? Colors.white : theme.colorScheme.secondary,
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -819,22 +985,24 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
               children: [
                 ...'123456789.0C'.split(''),
               ].map((char) {
-                return ElevatedButton(
-                  onPressed: () => _onKeypadPressed(char),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? const Color(0xFF26211F) : Colors.white,
-                    foregroundColor: theme.textTheme.bodyLarge?.color,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(
-                        color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
+                return ScaleBouncePressReaction(
+                  child: ElevatedButton(
+                    onPressed: () => _onKeypadPressed(char),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? const Color(0xFF26211F) : Colors.white,
+                      foregroundColor: theme.textTheme.bodyLarge?.color,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(
+                          color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
+                        ),
                       ),
                     ),
-                  ),
-                  child: Text(
-                    char,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    child: Text(
+                      char,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 );
               }).toList(),
@@ -915,22 +1083,24 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                   children: [
                     ...'123456789.0C'.split(''),
                   ].map((char) {
-                    return ElevatedButton(
-                      onPressed: () => _onKeypadPressed(char),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isDark ? const Color(0xFF26211F) : Colors.white,
-                        foregroundColor: theme.textTheme.bodyLarge?.color,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(
-                            color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
+                    return ScaleBouncePressReaction(
+                      child: ElevatedButton(
+                        onPressed: () => _onKeypadPressed(char),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark ? const Color(0xFF26211F) : Colors.white,
+                          foregroundColor: theme.textTheme.bodyLarge?.color,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
+                            ),
                           ),
                         ),
-                      ),
-                      child: Text(
-                        char,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        child: Text(
+                          char,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     );
                   }).toList(),
@@ -1084,6 +1254,41 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
     final usdTotal = CurrencyFormatter.formatUsd(widget.order.total);
     final khrTotal = CurrencyFormatter.formatKhr(widget.order.total);
 
+    Widget qrContent;
+
+    if (_isLoadingQr) {
+      qrContent = const SizedBox(
+        width: 140,
+        height: 140,
+        child: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF005A70)),
+          ),
+        ),
+      );
+    } else {
+      // Always show QR code so they can scan
+      qrContent = Image.network(
+        Uri.https('api.qrserver.com', '/v1/create-qr-code/', {
+          'size': '250x250',
+          'data': _dynamicQrString ?? 'https://link.payway.com.kh/ABAPAYPd468685R',
+        }).toString(),
+        width: 140,
+        height: 140,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return const SizedBox(
+            width: 140,
+            height: 140,
+            child: Center(
+              child: Icon(Icons.qr_code_2, size: 50, color: Colors.grey),
+            ),
+          );
+        },
+      );
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1149,35 +1354,7 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
-                    child: _isLoadingQr
-                        ? const SizedBox(
-                            width: 140,
-                            height: 140,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF005A70)),
-                              ),
-                            ),
-                          )
-                        : Image.network(
-                            Uri.https('api.qrserver.com', '/v1/create-qr-code/', {
-                              'size': '250x250',
-                              'data': _dynamicQrString ?? 'https://link.payway.com.kh/ABAPAYPd468685R',
-                            }).toString(),
-                            width: 140,
-                            height: 140,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const SizedBox(
-                                width: 140,
-                                height: 140,
-                                child: Center(
-                                  child: Icon(Icons.qr_code_2, size: 50, color: Colors.grey),
-                                ),
-                              );
-                            },
-                          ),
+                    child: qrContent,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1215,23 +1392,82 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
             ),
           ],
           
-          const SizedBox(height: 12),
-          Text(
-            'bakongGuide'.tr(context),
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
+          const SizedBox(height: 16),
+          
+          // Pending status text
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF005A70)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _pollingStatusMessage,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? const Color(0xFFF7F3EE) : const Color(0xFF2C1B14),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            'instantCredit'.tr(context),
-            style: const TextStyle(
-              fontSize: 10,
-              color: Colors.grey,
+          if (_pollingError != null) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                _pollingError!,
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            textAlign: TextAlign.center,
+          ] else ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                'Please scan and complete payment on your phone. The system is ready to confirm.',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: isDark ? const Color(0xFFA5968E) : const Color(0xFF6E5E57),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          
+          // Action button
+          ScaleBouncePressReaction(
+            child: ElevatedButton.icon(
+              onPressed: _confirmQrPayment,
+              icon: const Icon(Icons.check_circle_outline, size: 18),
+              label: const Text(
+                'Confirm Success on App Bakong',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 3,
+              ),
+            ),
           ),
         ],
       ),

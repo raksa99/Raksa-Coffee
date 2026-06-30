@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raksa Coffee — E-Invoice</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: linear-gradient(135deg, #1B1411 0%, #2D2420 50%, #1B1411 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #333;
+    }
+
+    .receipt-card {
+      background: #FFFDF9;
+      border-radius: 20px;
+      max-width: 420px;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.2);
+      animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1B1411, #2D2420);
+      padding: 28px 24px;
+      text-align: center;
+      position: relative;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 0;
+      right: 0;
+      height: 20px;
+      background: radial-gradient(circle at 10px 0, transparent 10px, #FFFDF9 10px) repeat-x;
+      background-size: 20px 20px;
+    }
+
+    .logo-circle {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 2.5px solid #D4AF37;
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      background: rgba(212,175,55,0.08);
+      overflow: hidden;
+    }
+
+    .logo-circle img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .shop-name {
+      color: #D4AF37;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      margin-bottom: 4px;
+    }
+
+    .shop-tagline {
+      color: #BCA697;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+    }
+
+    .shop-address {
+      color: #9A8A7E;
+      font-size: 11px;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    /* Body */
+    .body {
+      padding: 28px 24px 24px;
+    }
+
+    /* Invoice Meta */
+    .invoice-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #D4AF37, #C4991A);
+      color: #1B1411;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .meta-item {
+      font-size: 12px;
+      color: #705D53;
+    }
+
+    .meta-item strong {
+      color: #1B1411;
+      font-weight: 600;
+    }
+
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 2px dashed #E8DFD5;
+      margin: 16px 0;
+    }
+
+    /* Items */
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #A5968E;
+      margin-bottom: 12px;
+    }
+
+    .item-row {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .item-qty {
+      background: linear-gradient(135deg, #D4AF37, #C4991A);
+      color: #1B1411;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      margin-right: 10px;
+      min-width: 28px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .item-name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1B1411;
+    }
+
+    .item-price {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1B1411;
+      margin-left: 10px;
+      flex-shrink: 0;
+    }
+
+    /* Summary rows */
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 13px;
+      color: #705D53;
+    }
+
+    .summary-row.discount { color: #D4AF37; }
+
+    /* Total block */
+    .total-block {
+      background: linear-gradient(135deg, #1B1411, #2D2420);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin: 16px 0;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .total-label {
+      color: #FFFDF9;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .total-label.khr {
+      color: #BCA697;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .total-value {
+      color: #D4AF37;
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .total-value.khr {
+      color: #FFFDF9;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    /* Payment badge */
+    .payment-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(76, 175, 80, 0.1);
+      border: 1px solid rgba(76, 175, 80, 0.3);
+      color: #4CAF50;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    .payment-badge .check {
+      width: 14px;
+      height: 14px;
+      background: #4CAF50;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 9px;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 20px 24px 28px;
+      position: relative;
+    }
+
+    .footer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 24px;
+      right: 24px;
+      height: 1px;
+      background: #E8DFD5;
+    }
+
+    .footer-text {
+      font-size: 12px;
+      color: #A5968E;
+      font-weight: 500;
+    }
+
+    .footer-brand {
+      font-size: 11px;
+      color: #D4AF37;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-top: 8px;
+    }
+
+    /* Error state */
+    .error-state {
+      text-align: center;
+      padding: 60px 24px;
+    }
+
+    .error-state .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .error-state h2 {
+      font-size: 20px;
+      color: #1B1411;
+      margin-bottom: 8px;
+    }
+
+    .error-state p {
+      font-size: 14px;
+      color: #A5968E;
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-card" id="receipt">
+    <!-- Content will be injected by JS -->
+  </div>
+
+  <script>
+    function getInvoiceData() {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('data');
+      if (!raw) return null;
+      try {
+        // Convert base64url to standard base64
+        let b64 = raw.replace(/-/g, '+').replace(/_/g, '/');
+        // Add padding if needed
+        while (b64.length % 4 !== 0) b64 += '=';
+        return JSON.parse(atob(b64));
+      } catch (e) {
+        // Try URL-decoded JSON
+        try {
+          return JSON.parse(decodeURIComponent(raw));
+        } catch (e2) {
+          return null;
+        }
+      }
+    }
+
+    function renderInvoice(data) {
+      const receipt = document.getElementById('receipt');
+
+      if (!data) {
+        receipt.innerHTML = `
+          <div class="header">
+            <div class="logo-circle">☕</div>
+            <div class="shop-name">RAKSA COFFEE</div>
+          </div>
+          <div class="error-state">
+            <div class="icon">📄</div>
+            <h2>Invoice Not Found</h2>
+            <p>This QR code does not contain valid invoice data.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Build items HTML
+      const itemsHtml = (data.items || []).map(item => `
+        <div class="item-row">
+          <span class="item-qty">${item.qty}x</span>
+          <span class="item-name">${escapeHtml(item.name)}</span>
+          <span class="item-price">${escapeHtml(item.price)}</span>
+        </div>
+      `).join('');
+
+      receipt.innerHTML = `
+        <div class="header">
+          <div class="logo-circle">☕</div>
+          <div class="shop-name">${escapeHtml(data.shop || 'RAKSA COFFEE')}</div>
+          <div class="shop-tagline">PREMIUM COFFEE & BLENDS</div>
+          <div class="shop-address">
+            ${escapeHtml(data.address || '')}<br>
+            Tel: ${escapeHtml(data.tel || '')}
+          </div>
+        </div>
+
+        <div class="body">
+          <div class="invoice-badge">E-INVOICE</div>
+
+          <div class="meta-grid">
+            <div class="meta-item"><strong>Invoice:</strong> ${escapeHtml(data.invoice || '')}</div>
+            <div class="meta-item"><strong>Date:</strong> ${escapeHtml(data.date || '')}</div>
+            <div class="meta-item"><strong>Customer:</strong> ${escapeHtml(data.customer || 'Walk-in')}</div>
+            <div class="meta-item"><strong>Time:</strong> ${escapeHtml(data.time || '')}</div>
+          </div>
+
+          <hr class="divider">
+
+          <div class="section-title">ITEMS PURCHASED</div>
+          ${itemsHtml}
+
+          <hr class="divider">
+
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <span>${escapeHtml(data.subtotal || '')}</span>
+          </div>
+          ${data.discount && data.discount !== '$0.00' ? `
+          <div class="summary-row discount">
+            <span>Discount</span>
+            <span>-${escapeHtml(data.discount)}</span>
+          </div>` : ''}
+          <div class="summary-row">
+            <span>Tax</span>
+            <span>${escapeHtml(data.tax || '')}</span>
+          </div>
+
+          <div class="total-block">
+            <div class="total-row">
+              <span class="total-label">Total (USD)</span>
+              <span class="total-value">${escapeHtml(data.total_usd || '')}</span>
+            </div>
+            <div class="total-row" style="margin-top: 6px;">
+              <span class="total-label khr">Total (KHR)</span>
+              <span class="total-value khr">${escapeHtml(data.total_khr || '')}</span>
+            </div>
+          </div>
+
+          <div style="text-align: center; margin-top: 12px;">
+            <div class="payment-badge">
+              <span class="check">✓</span>
+              PAID VIA ${escapeHtml((data.payment || '').toUpperCase())}
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="footer-text">Thank you for your purchase! ☕</div>
+          <div class="footer-brand">RAKSA COFFEE</div>
+        </div>
+      `;
+
+      document.title = `Raksa Coffee — Invoice ${data.invoice || ''}`;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // Run
+    const data = getInvoiceData();
+    renderInvoice(data);
+  </script>
+</body>
+</html>

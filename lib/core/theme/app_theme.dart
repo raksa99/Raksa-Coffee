@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Light Theme Palette (Boutique Warm Cream)
-  static const Color lightBg = Color(0xFFFAF6F0);
+  // Light Theme Palette (Warm Sand & Pearl)
+  static const Color lightBg = Color(0xFFFAF8F5); // Pearl sand background
   static const Color lightCard = Colors.white;
-  static const Color lightSurface = Color(0xFFF3EFE9);
-  static const Color lightBorder = Color(0xFFEADFD3);
-  static const Color lightTextPrimary = Color(0xFF2C1B14);
-  static const Color lightTextSecondary = Color(0xFF705D53);
+  static const Color lightSurface = Color(0xFFF4EFEA); // Soft sand surface
+  static const Color lightBorder = Color(0xFFE8DFD5); // Delicate warm border
+  static const Color lightTextPrimary = Color(0xFF1F1511); // Deep charcoal cocoa
+  static const Color lightTextSecondary = Color(0xFF6E5E57); // Medium sand cocoa
   
-  // Dark Theme Palette (Charcoal Espresso)
-  static const Color darkBg = Color(0xFF131110);
-  static const Color darkCard = Color(0xFF1E1A18);
-  static const Color darkSurface = Color(0xFF26211F);
-  static const Color darkBorder = Color(0xFF38312E);
-  static const Color darkTextPrimary = Color(0xFFF7F3EE);
-  static const Color darkTextSecondary = Color(0xFFA5968E);
+  // Dark Theme Palette (Obsidian Espresso)
+  static const Color darkBg = Color(0xFF0B0909); // Obsidian background
+  static const Color darkCard = Color(0xFF151211); // Deep warm card
+  static const Color darkSurface = Color(0xFF1D1918); // Warm dark surface
+  static const Color darkBorder = Color(0xFF2A2321); // Dark cocoa border
+  static const Color darkTextPrimary = Color(0xFFF5F0EC); // Cream white text
+  static const Color darkTextSecondary = Color(0xFFA3958F); // Soft cream cocoa text
 
   // Common Brand Colors
-  static const Color primary = Color(0xFF8D5B4C); // Espresso Brown
-  static const Color primaryLight = Color(0xFFB07D6D);
-  static const Color accent = Color(0xFFD4A373); // Roasted Gold
-  static const Color accentLight = Color(0xFFE9C49A);
+  static const Color primary = Color(0xFF9A6655); // Premium warm bronze
+  static const Color primaryLight = Color(0xFFB57F6D);
+  static const Color accent = Color(0xFFD09865); // Roasted Gold
+  static const Color accentLight = Color(0xFFE5B588);
   
   static const Color success = Color(0xFF4A7C59); // Sage Green
   static const Color warning = Color(0xFFD3A24B); // Amber
@@ -50,49 +50,52 @@ class AppTheme {
       textTheme: const TextTheme(
         headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.lightTextPrimary, fontFamily: 'Outfit'),
         headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.lightTextPrimary, fontFamily: 'Outfit'),
-        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.lightTextPrimary),
-        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.lightTextPrimary),
-        bodyLarge: TextStyle(fontSize: 16, color: AppColors.lightTextPrimary),
-        bodyMedium: TextStyle(fontSize: 14, color: AppColors.lightTextSecondary),
-        bodySmall: TextStyle(fontSize: 12, color: AppColors.lightTextSecondary),
+        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.lightTextPrimary, fontFamily: 'Outfit'),
+        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.lightTextPrimary, fontFamily: 'Outfit'),
+        bodyLarge: TextStyle(fontSize: 16, color: AppColors.lightTextPrimary, fontFamily: 'Outfit'),
+        bodyMedium: TextStyle(fontSize: 14, color: AppColors.lightTextSecondary, fontFamily: 'Outfit'),
+        bodySmall: TextStyle(fontSize: 12, color: AppColors.lightTextSecondary, fontFamily: 'Outfit'),
       ),
       cardTheme: CardThemeData(
         color: AppColors.lightCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.lightBorder, width: 1),
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.lightBorder, width: 1.2),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.lightCard,
-        elevation: 12,
+        elevation: 20,
+        shadowColor: Colors.black.withAlpha(20),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          side: const BorderSide(color: AppColors.lightBorder, width: 1),
+          side: const BorderSide(color: AppColors.lightBorder, width: 1.2),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          shape: const StadiumBorder(),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 4,
+          shadowColor: AppColors.primary.withAlpha(40),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: const StadiumBorder(),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.lightTextPrimary,
-          side: const BorderSide(color: AppColors.lightBorder),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: const BorderSide(color: AppColors.lightBorder, width: 1.2),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: const StadiumBorder(),
         ),
       ),
     );
@@ -118,49 +121,52 @@ class AppTheme {
       textTheme: const TextTheme(
         headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.darkTextPrimary, fontFamily: 'Outfit'),
         headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.darkTextPrimary, fontFamily: 'Outfit'),
-        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.darkTextPrimary),
-        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.darkTextPrimary),
-        bodyLarge: TextStyle(fontSize: 16, color: AppColors.darkTextPrimary),
-        bodyMedium: TextStyle(fontSize: 14, color: AppColors.darkTextSecondary),
-        bodySmall: TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.darkTextPrimary, fontFamily: 'Outfit'),
+        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.darkTextPrimary, fontFamily: 'Outfit'),
+        bodyLarge: TextStyle(fontSize: 16, color: AppColors.darkTextPrimary, fontFamily: 'Outfit'),
+        bodyMedium: TextStyle(fontSize: 14, color: AppColors.darkTextSecondary, fontFamily: 'Outfit'),
+        bodySmall: TextStyle(fontSize: 12, color: AppColors.darkTextSecondary, fontFamily: 'Outfit'),
       ),
       cardTheme: CardThemeData(
         color: AppColors.darkCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.darkBorder, width: 1),
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.darkBorder, width: 1.2),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.darkCard,
-        elevation: 12,
+        elevation: 20,
+        shadowColor: Colors.black.withAlpha(80),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          side: const BorderSide(color: AppColors.darkBorder, width: 1),
+          side: const BorderSide(color: AppColors.darkBorder, width: 1.2),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primaryLight,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          shape: const StadiumBorder(),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryLight,
           foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 6,
+          shadowColor: AppColors.primaryLight.withAlpha(30),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: const StadiumBorder(),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.darkTextPrimary,
-          side: const BorderSide(color: AppColors.darkBorder),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: const BorderSide(color: AppColors.darkBorder, width: 1.2),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: const StadiumBorder(),
         ),
       ),
     );

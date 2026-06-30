@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -13,6 +14,7 @@ import '../../../menu/presentation/widgets/add_product_dialog.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../menu/presentation/widgets/product_grid.dart';
 import 'daily_dashboard.dart';
+import '../../../../core/utils/animations.dart';
 
 class PosDashboard extends StatefulWidget {
   final VoidCallback onThemeToggled;
@@ -43,17 +45,46 @@ class _PosDashboardState extends State<PosDashboard> {
     final isMobile = size.width < 750;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: (isDark ? const Color(0xFF0B0909) : const Color(0xFFFAF8F5)).withAlpha(210),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
         title: Row(
           children: [
-            Icon(Icons.local_cafe, color: theme.colorScheme.primary),
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.cover,
+                  filterQuality: FilterQuality.high,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(Icons.local_cafe_rounded, color: theme.colorScheme.primary, size: 24);
+                  },
+                ),
+              ),
+            ),
             const SizedBox(width: 8),
             Text(
               'appTitle'.tr(context),
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
+                letterSpacing: 0.5,
                 fontFamily: 'Outfit',
+                fontSize: 18,
+                color: isDark ? const Color(0xFFF5F0EC) : const Color(0xFF1F1511),
               ),
             ),
           ],
@@ -62,44 +93,43 @@ class _PosDashboardState extends State<PosDashboard> {
             ? null
             : PreferredSize(
                 preferredSize: const Size.fromHeight(1),
-                child: Divider(
-                  color: isDark ? const Color(0xFF2D2927) : const Color(0xFFEADFD3),
+                child: Container(
                   height: 1,
+                  color: isDark ? const Color(0xFF2A2321) : const Color(0xFFE8DFD5),
                 ),
               ),
         actions: [
           // Nav bar items (Counter vs Dashboard) - only show on desktop/tablet
           if (!isMobile) ...[
-            TextButton.icon(
-              onPressed: () => setState(() => _activeNavIndex = 0),
-              icon: Icon(
-                Icons.point_of_sale,
-                color: _activeNavIndex == 0 ? theme.colorScheme.primary : theme.colorScheme.secondary,
-              ),
-              label: Text(
-                'counter'.tr(context),
-                style: TextStyle(
-                  color: _activeNavIndex == 0 ? theme.colorScheme.primary : theme.textTheme.bodyMedium?.color,
-                  fontWeight: _activeNavIndex == 0 ? FontWeight.bold : FontWeight.normal,
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF151211) : const Color(0xFFF4EFEA),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF2A2321) : const Color(0xFFE8DFD5),
+                  width: 1.2,
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            TextButton.icon(
-              onPressed: () => setState(() => _activeNavIndex = 1),
-              icon: Icon(
-                Icons.analytics_outlined,
-                color: _activeNavIndex == 1 ? theme.colorScheme.primary : theme.colorScheme.secondary,
+              child: Row(
+                children: [
+                  _buildNavTab(
+                    index: 0,
+                    icon: Icons.point_of_sale_rounded,
+                    label: 'counter'.tr(context),
+                    theme: theme,
+                  ),
+                  const SizedBox(width: 4),
+                  _buildNavTab(
+                    index: 1,
+                    icon: Icons.insights_rounded,
+                    label: 'salesReport'.tr(context),
+                    theme: theme,
+                  ),
+                ],
               ),
-              label: Text(
-                'salesReport'.tr(context),
-                style: TextStyle(
-                  color: _activeNavIndex == 1 ? theme.colorScheme.primary : theme.textTheme.bodyMedium?.color,
-                  fontWeight: _activeNavIndex == 1 ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 16),
           ],
           
           // Add product button
@@ -130,21 +160,24 @@ class _PosDashboardState extends State<PosDashboard> {
           const SizedBox(width: 8),
 
           // Language switcher
-          TextButton(
-            onPressed: widget.onLocaleToggled,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withAlpha(20),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: theme.colorScheme.primary),
-              ),
-              child: Text(
-                widget.activeLocale.languageCode.toUpperCase() == 'EN' ? 'KM' : 'EN',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: theme.colorScheme.primary,
+          ScaleBouncePressReaction(
+            child: TextButton(
+              onPressed: widget.onLocaleToggled,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: theme.colorScheme.primary.withAlpha(100)),
+                ),
+                child: Text(
+                  widget.activeLocale.languageCode.toUpperCase() == 'EN' ? 'KM' : 'EN',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    color: theme.colorScheme.primary,
+                    fontFamily: 'Outfit',
+                  ),
                 ),
               ),
             ),
@@ -152,17 +185,42 @@ class _PosDashboardState extends State<PosDashboard> {
           const SizedBox(width: 8),
 
           // Theme toggler
-          IconButton(
-            onPressed: widget.onThemeToggled,
-            icon: Icon(widget.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-            tooltip: 'Toggle Theme Mode',
+          ScaleBouncePressReaction(
+            child: IconButton(
+              onPressed: widget.onThemeToggled,
+              icon: Icon(widget.isDarkMode ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
+              tooltip: 'Toggle Theme Mode',
+            ),
           ),
           const SizedBox(width: 12),
         ],
       ),
-      body: isMobile
-          ? _buildMobileBody(context, theme, isDark)
-          : (_activeNavIndex == 1 ? const DailyDashboard() : _buildTabletLayout(context, theme, isDark)),
+      body: Padding(
+        padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          switchInCurve: Curves.easeInOutCubic,
+          switchOutCurve: Curves.easeInOutCubic,
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.0, 0.02),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            );
+          },
+          child: KeyedSubtree(
+            key: ValueKey<String>('${isMobile ? "m" : "d"}_$_activeNavIndex'),
+            child: isMobile
+                ? _buildMobileBody(context, theme, isDark)
+                : (_activeNavIndex == 1 ? const DailyDashboard() : _buildTabletLayout(context, theme, isDark)),
+          ),
+        ),
+      ),
       bottomNavigationBar: isMobile
           ? BottomNavigationBar(
               currentIndex: _activeNavIndex > 3 ? 0 : _activeNavIndex,
@@ -589,6 +647,50 @@ class _PosDashboardState extends State<PosDashboard> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildNavTab({
+    required int index,
+    required IconData icon,
+    required String label,
+    required ThemeData theme,
+  }) {
+    final isSelected = _activeNavIndex == index;
+    
+    return InkWell(
+      onTap: () => setState(() => _activeNavIndex = index),
+      borderRadius: BorderRadius.circular(24),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? theme.colorScheme.primary 
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.white : theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 13,
+                fontFamily: 'Outfit',
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

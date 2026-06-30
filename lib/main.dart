@@ -7,11 +7,11 @@ import 'core/theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
 import 'features/cart/presentation/bloc/cart_bloc.dart';
 import 'features/checkout/presentation/bloc/checkout_bloc.dart';
-import 'features/checkout/presentation/widgets/pos_dashboard.dart';
 import 'features/menu/data/datasources/local_menu_datasource.dart';
 import 'features/menu/data/repositories/menu_repository_impl.dart';
 import 'features/menu/presentation/bloc/menu_bloc.dart';
 import 'features/menu/presentation/bloc/menu_event.dart';
+import 'features/splash/presentation/widgets/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,7 +88,7 @@ class _CoffeePOSAppState extends State<CoffeePOSApp> {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        home: PosDashboard(
+        home: SplashScreen(
           onThemeToggled: _toggleTheme,
           isDarkMode: _isDarkMode,
           onLocaleToggled: _toggleLocale,

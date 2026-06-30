@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/network/local_database.dart';
 import '../../../../core/network/supabase_service.dart';
 import '../../domain/models/order.dart';
@@ -19,6 +20,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       await Future.delayed(const Duration(milliseconds: 800));
 
       final completedOrder = event.order.copyWith(
+        id: event.order.id.isEmpty ? const Uuid().v4() : event.order.id,
+        orderNumber: event.order.orderNumber.isEmpty
+            ? (LocalDatabase.getSalesHistory().length + LocalDatabase.getQueuedOrders().length + 1).toString().padLeft(4, '0')
+            : event.order.orderNumber,
         status: OrderStatus.completed,
         paymentMethod: event.paymentMethod,
         amountPaid: event.amountPaid,

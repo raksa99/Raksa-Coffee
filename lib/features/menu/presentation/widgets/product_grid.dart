@@ -11,6 +11,7 @@ import '../bloc/menu_state.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'modifier_modal.dart';
 import 'product_card.dart';
+import '../../../../core/utils/animations.dart';
 
 class ProductGrid extends StatelessWidget {
   const ProductGrid({super.key});
@@ -123,6 +124,7 @@ class ProductGrid extends StatelessWidget {
                           }
 
                           return GridView.builder(
+                            key: ValueKey<String>('${state.selectedCategory}_${products.length}'),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: crossAxisCount,
@@ -134,45 +136,48 @@ class ProductGrid extends StatelessWidget {
                             itemBuilder: (context, index) {
                               final product = products[index];
 
-                              return ProductCard(
-                                product: product,
-                                onTap: () {
-                                  if (product.modifierGroups.isNotEmpty) {
-                                    // Open modal for customization
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) {
-                                        return ModifierModal(
-                                          product: product,
-                                          onAddToCart: (cartItem) {
-                                            context.read<CartBloc>().add(AddToCart(cartItem));
-                                          },
-                                        );
-                                      },
-                                    );
-                                  } else {
-                                    // Direct add to cart
-                                    final cartItem = CartItem(
-                                      id: const Uuid().v4(),
-                                      product: product,
-                                      quantity: 1,
-                                      selectedModifiers: const {},
-                                      notes: '',
-                                    );
-                                    context.read<CartBloc>().add(AddToCart(cartItem));
-                                    
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('${product.name} added to cart'),
-                                        duration: const Duration(seconds: 1),
-                                        backgroundColor: theme.colorScheme.primary,
-                                      ),
-                                    );
-                                  }
-                                },
-                                onDelete: () {
-                                  _showDeleteConfirmation(context, product);
-                                },
+                              return StaggeredEntranceAnimation(
+                                index: index,
+                                child: ProductCard(
+                                  product: product,
+                                  onTap: () {
+                                    if (product.modifierGroups.isNotEmpty) {
+                                      // Open modal for customization
+                                      showDialog(
+                                        context: context,
+                                        builder: (_) {
+                                          return ModifierModal(
+                                            product: product,
+                                            onAddToCart: (cartItem) {
+                                              context.read<CartBloc>().add(AddToCart(cartItem));
+                                            },
+                                          );
+                                        },
+                                      );
+                                    } else {
+                                      // Direct add to cart
+                                      final cartItem = CartItem(
+                                        id: const Uuid().v4(),
+                                        product: product,
+                                        quantity: 1,
+                                        selectedModifiers: const {},
+                                        notes: '',
+                                      );
+                                      context.read<CartBloc>().add(AddToCart(cartItem));
+                                      
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('${product.name} added to cart'),
+                                          duration: const Duration(seconds: 1),
+                                          backgroundColor: theme.colorScheme.primary,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  onDelete: () {
+                                    _showDeleteConfirmation(context, product);
+                                  },
+                                ),
                               );
                             },
                           );

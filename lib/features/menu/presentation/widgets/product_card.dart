@@ -1,6 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/models/product.dart';
+
+import '../../../../core/utils/animations.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -16,7 +19,6 @@ class ProductCard extends StatelessWidget {
 
   Widget _buildPlaceholderImage(ThemeData theme, bool isDark) {
     return Container(
-      height: 110,
       width: double.infinity,
       color: isDark ? const Color(0xFF26211F) : const Color(0xFFF3EFE9),
       child: Icon(
@@ -32,76 +34,75 @@ class ProductCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: product.isAvailable ? onTap : null,
+    return ScaleBouncePressReaction(
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: product.isAvailable ? onTap : null,
         child: Stack(
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Product Image Header
-                if (product.imageUrl != null && product.imageUrl!.isNotEmpty)
-                  Image.network(
-                    product.imageUrl!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: 110,
-                    errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(theme, isDark),
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        height: 110,
-                        color: isDark ? const Color(0xFF26211F) : const Color(0xFFF3EFE9),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                else
-                  _buildPlaceholderImage(theme, isDark),
+                Expanded(
+                  flex: 5,
+                  child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                      ? Image.network(
+                          product.imageUrl!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(theme, isDark),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: isDark ? const Color(0xFF26211F) : const Color(0xFFF3EFE9),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : _buildPlaceholderImage(theme, isDark),
+                ),
 
                 // Info Section
                 Expanded(
+                  flex: 6,
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Category tag & Config indicator
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF26211F) : const Color(0xFFF3EFE9),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                product.category,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.secondary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 9,
-                                ),
-                              ),
-                            ),
-                            if (product.modifierGroups.isNotEmpty)
+                        if (product.modifierGroups.isNotEmpty) ...[
+                          Row(
+                            children: [
                               Icon(
-                                Icons.tune,
-                                size: 14,
+                                Icons.tune_rounded,
+                                size: 12,
                                 color: theme.colorScheme.secondary,
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
+                              const SizedBox(width: 4),
+                              Text(
+                                'CUSTOMISABLE',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.secondary,
+                                  letterSpacing: 0.5,
+                                  fontFamily: 'Outfit',
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                        ] else ...[
+                          const SizedBox(height: 16),
+                        ],
                         
                         // Product Name
                         Text(
@@ -121,7 +122,7 @@ class ProductCard extends StatelessWidget {
                           child: Text(
                             product.description,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: isDark ? const Color(0xFFA5968E) : const Color(0xFF705D53),
+                              color: isDark ? const Color(0xFFA3958F) : const Color(0xFF6E5E57),
                               fontSize: 11,
                             ),
                             maxLines: 2,
@@ -139,14 +140,29 @@ class ProductCard extends StatelessWidget {
                               style: theme.textTheme.titleMedium?.copyWith(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
                             ),
                             Container(
-                              width: 28,
-                              height: 28,
+                              width: 30,
+                              height: 30,
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    theme.colorScheme.primary,
+                                    theme.colorScheme.primary.withAlpha(200),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
                                 shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: theme.colorScheme.primary.withAlpha(60),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               child: const Icon(
                                 Icons.add,
@@ -163,25 +179,69 @@ class ProductCard extends StatelessWidget {
               ],
             ),
             
+            // Floating category tag
+            Positioned(
+              top: 8,
+              left: 8,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.black : Colors.white).withAlpha(160),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: (isDark ? Colors.white : Colors.black).withAlpha(30),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Text(
+                      product.category.toUpperCase(),
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 9,
+                        letterSpacing: 0.5,
+                        fontFamily: 'Outfit',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
             // Out of stock overlay
             if (!product.isAvailable)
-              Container(
-                color: Colors.black54,
-                alignment: Alignment.center,
-                child: RotationTransition(
-                  turns: const AlwaysStoppedAnimation(-15 / 360),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.error,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'OUT OF STOCK',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 4.0, sigmaY: 4.0),
+                    child: Container(
+                      color: Colors.black.withAlpha(90),
+                      alignment: Alignment.center,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error.withAlpha(220),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withAlpha(50),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: const Text(
+                          'OUT OF STOCK',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            letterSpacing: 0.8,
+                            fontFamily: 'Outfit',
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -208,6 +268,7 @@ class ProductCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
