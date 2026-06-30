@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <title>Raksa Coffee — E-Invoice</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
@@ -377,6 +378,45 @@
       .footer-brand {
         color: #000 !important;
       }
+      .qr-container {
+        border-top: 1px dashed #ccc !important;
+      }
+      #qrcode {
+        border: 1px solid #ccc !important;
+      }
+      .qr-label {
+        color: #000 !important;
+      }
+    }
+
+    .qr-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px dashed #E8DFD5;
+    }
+    #qrcode {
+      padding: 8px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #E8DFD5;
+      display: inline-block;
+    }
+    #qrcode img {
+      width: 100px;
+      height: 100px;
+      display: block;
+      margin: 0 auto;
+    }
+    .qr-label {
+      font-size: 11px;
+      color: #A5968E;
+      margin-top: 6px;
+      font-weight: 700;
+      letter-spacing: 1px;
     }
   </style>
 </head>
@@ -494,6 +534,11 @@
               PAID VIA ${escapeHtml((data.payment || '').toUpperCase())}
             </div>
           </div>
+
+          <div class="qr-container">
+            <div id="qrcode"></div>
+            <div class="qr-label">SCAN TO VIEW E-INVOICE</div>
+          </div>
         </div>
 
         <div class="footer">
@@ -501,6 +546,31 @@
           <div class="footer-brand">RAKSA COFFEE</div>
         </div>
       `;
+
+      // Generate QR Code
+      if (data) {
+        let qrUrl = window.location.href;
+        // Strip print parameter so it doesn't open the print dialog on scan
+        qrUrl = qrUrl.replace(/[&?]print=true/g, '');
+        
+        // Rewrite localhost/127.0.0.1 to production URL
+        if (qrUrl.includes('localhost') || qrUrl.includes('127.0.0.1')) {
+          qrUrl = qrUrl.replace(/http:\/\/(localhost|127\.0\.0\.1):\d+\/invoice\.html/g, 'https://raksa-coffee.vercel.app/invoice.html');
+        }
+
+        try {
+          new QRCode(document.getElementById("qrcode"), {
+            text: qrUrl,
+            width: 100,
+            height: 100,
+            colorDark : "#1B1411",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.M
+          });
+        } catch (e) {
+          console.error("Error generating QR code:", e);
+        }
+      }
 
       document.title = `Raksa Coffee — Invoice ${data.invoice || ''}`;
     }
