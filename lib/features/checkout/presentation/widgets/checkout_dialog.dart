@@ -414,6 +414,28 @@ class _CheckoutDialogState extends State<CheckoutDialog> {
                               final dataParam = fullUrl.split('?data=').last;
                               final localInvoiceUrl = 'invoice.html?data=$dataParam';
                               if (kIsWeb) {
+                                js.context.callMethod('eval', ["""
+                                  if (typeof window.printInvoiceInIframe === 'undefined') {
+                                    window.printInvoiceInIframe = function(invoiceDataUrl) {
+                                      const iframe = document.createElement('iframe');
+                                      iframe.style.position = 'fixed';
+                                      iframe.style.width = '0';
+                                      iframe.style.height = '0';
+                                      iframe.style.border = 'none';
+                                      iframe.src = invoiceDataUrl;
+                                      document.body.appendChild(iframe);
+                                      iframe.onload = function() {
+                                        setTimeout(() => {
+                                          iframe.contentWindow.focus();
+                                          iframe.contentWindow.print();
+                                          setTimeout(() => {
+                                            document.body.removeChild(iframe);
+                                          }, 2000);
+                                        }, 500);
+                                      };
+                                    };
+                                  }
+                                """]);
                                 js.context.callMethod('printInvoiceInIframe', [localInvoiceUrl]);
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
