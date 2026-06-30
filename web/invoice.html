@@ -346,7 +346,7 @@
       if (!data) {
         receipt.innerHTML = `
           <div class="header">
-            <div class="logo-circle">☕</div>
+            <div class="logo-circle"><img src="logo.png" alt="Logo" onerror="this.style.display='none'; this.parentElement.innerText='☕'"></div>
             <div class="shop-name">RAKSA COFFEE</div>
           </div>
           <div class="error-state">
@@ -369,7 +369,7 @@
 
       receipt.innerHTML = `
         <div class="header">
-          <div class="logo-circle">☕</div>
+          <div class="logo-circle"><img src="logo.png" alt="Logo" onerror="this.style.display='none'; this.parentElement.innerText='☕'"></div>
           <div class="shop-name">${escapeHtml(data.shop || 'RAKSA COFFEE')}</div>
           <div class="shop-tagline">PREMIUM COFFEE & BLENDS</div>
           <div class="shop-address">
