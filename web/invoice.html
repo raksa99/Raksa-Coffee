@@ -437,7 +437,32 @@
         while (b64.length % 4 !== 0) b64 += '=';
         const binString = atob(b64);
         const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0));
-        return JSON.parse(new TextDecoder().decode(bytes));
+        const obj = JSON.parse(new TextDecoder().decode(bytes));
+        
+        // Map shortened keys to full keys for smaller QR payload
+        if (obj.i) {
+          return {
+            shop: obj.sh || 'Raksa Coffee',
+            address: obj.ad || 'Sangkat Phnom Penh Thmey, Khan Sen Sok, Phnom Penh',
+            tel: obj.te || '+855 96 798 2573',
+            invoice: obj.i,
+            date: obj.d,
+            time: obj.t,
+            customer: obj.c || 'Walk-in',
+            items: (obj.it || []).map(item => ({
+              name: item.n,
+              qty: item.q,
+              price: item.p.startsWith('$') ? item.p : '$' + item.p
+            })),
+            subtotal: obj.s.startsWith('$') ? obj.s : '$' + obj.s,
+            discount: obj.ds ? (obj.ds.startsWith('$') ? obj.ds : '$' + obj.ds) : '$0.00',
+            tax: obj.tx.startsWith('$') ? obj.tx : '$' + obj.tx,
+            total_usd: obj.u.startsWith('$') ? obj.u : '$' + obj.u,
+            total_khr: obj.k.endsWith('៛') ? obj.k : obj.k + '៛',
+            payment: obj.py
+          };
+        }
+        return obj;
       } catch (e) {
         // Try URL-decoded JSON
         try {
@@ -561,11 +586,11 @@
         try {
           new QRCode(document.getElementById("qrcode"), {
             text: qrUrl,
-            width: 100,
-            height: 100,
+            width: 120,
+            height: 120,
             colorDark : "#1B1411",
             colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.M
+            correctLevel : QRCode.CorrectLevel.L
           });
         } catch (e) {
           console.error("Error generating QR code:", e);

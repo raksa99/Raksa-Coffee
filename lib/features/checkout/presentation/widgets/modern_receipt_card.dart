@@ -393,24 +393,21 @@ class ModernReceiptCard extends StatelessWidget {
 
   String buildInvoiceQrData() {
     final invoice = {
-      'shop': 'Raksa Coffee',
-      'address': 'Sangkat Phnom Penh Thmey, Khan Sen Sok, Phnom Penh',
-      'tel': '+855 96 798 2573',
-      'invoice': '#${order.orderNumber}',
-      'date': '${order.dateTime.year}-${order.dateTime.month.toString().padLeft(2, '0')}-${order.dateTime.day.toString().padLeft(2, '0')}',
-      'time': '${order.dateTime.hour.toString().padLeft(2, '0')}:${order.dateTime.minute.toString().padLeft(2, '0')}',
-      'customer': order.customerName.isNotEmpty ? order.customerName : 'Walk-in',
-      'items': order.items.map((item) => {
-        'name': item.product.name,
-        'qty': item.quantity,
-        'price': '\$${item.totalPrice.toStringAsFixed(2)}',
+      'i': '#${order.orderNumber}',
+      'd': '${order.dateTime.year}-${order.dateTime.month.toString().padLeft(2, '0')}-${order.dateTime.day.toString().padLeft(2, '0')}',
+      't': '${order.dateTime.hour.toString().padLeft(2, '0')}:${order.dateTime.minute.toString().padLeft(2, '0')}',
+      if (order.customerName.isNotEmpty) 'c': order.customerName,
+      'it': order.items.map((item) => {
+        'n': item.product.name,
+        'q': item.quantity,
+        'p': item.totalPrice.toStringAsFixed(2),
       }).toList(),
-      'subtotal': '\$${order.subtotal.toStringAsFixed(2)}',
-      'discount': '\$${order.discountAmount.toStringAsFixed(2)}',
-      'tax': '\$${order.taxAmount.toStringAsFixed(2)}',
-      'total_usd': '\$${order.total.toStringAsFixed(2)}',
-      'total_khr': '${(order.total * 4100).toStringAsFixed(0)}៛',
-      'payment': order.paymentMethod == PaymentMethod.cash
+      's': order.subtotal.toStringAsFixed(2),
+      'ds': order.discountAmount.toStringAsFixed(2),
+      'tx': order.taxAmount.toStringAsFixed(2),
+      'u': order.total.toStringAsFixed(2),
+      'k': (order.total * 4100).toStringAsFixed(0),
+      'py': order.paymentMethod == PaymentMethod.cash
           ? 'Cash'
           : order.paymentMethod == PaymentMethod.card
               ? 'Card'
