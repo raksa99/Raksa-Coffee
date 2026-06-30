@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../../../core/config/env_config.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/models/order.dart';
@@ -417,12 +418,8 @@ class ModernReceiptCard extends StatelessWidget {
     };
     final jsonStr = jsonEncode(invoice);
     final base64Data = base64Url.encode(utf8.encode(jsonStr));
-    // Dynamically build the URL including the base path (e.g., /Raksa-Coffee/)
-    String basePath = Uri.base.path;
-    if (!basePath.endsWith('/')) {
-      basePath = '$basePath/';
-    }
-    return '${Uri.base.origin}${basePath}invoice.html?data=$base64Data';
+    // Use the configured public E-Invoice URL so scans work even when POS runs on localhost
+    return '${EnvConfig.invoiceWebUrl}?data=$base64Data';
   }
 
   Widget _buildRow(String label, String value, {required bool isBold, required ThemeData theme, Color? valueColor}) {

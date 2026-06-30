@@ -27,4 +27,9 @@ class EnvConfig {
   // ==========================================
   static const String supabaseUrl = 'https://kuksgolxnnnvjkiwvuzr.supabase.co'; // Enter your Supabase project URL here
   static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1a3Nnb2x4bm5udmpraXd2dXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMTEyOTYsImV4cCI6MjA5NzU4NzI5Nn0.F0I17NzcChiUfJbIs_YiBmkLvKAYUI67C49_fZpvZvg'; // Enter your Supabase Anon Key here
+
+  // ==========================================
+  // E-INVOICE HOSTING SETTINGS
+  // ==========================================
+  static const String invoiceWebUrl = 'https://raksa99.github.io/Raksa-Coffee/web/invoice.html';
 }
