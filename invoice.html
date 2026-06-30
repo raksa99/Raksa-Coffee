@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Raksa Coffee — E-Invoice</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Outfit', 'Kantumruy Pro', sans-serif;
       background: linear-gradient(135deg, #1B1411 0%, #2D2420 50%, #1B1411 100%);
       min-height: 100vh;
       display: flex;
@@ -327,7 +327,9 @@
         let b64 = raw.replace(/-/g, '+').replace(/_/g, '/');
         // Add padding if needed
         while (b64.length % 4 !== 0) b64 += '=';
-        return JSON.parse(atob(b64));
+        const binString = atob(b64);
+        const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0));
+        return JSON.parse(new TextDecoder().decode(bytes));
       } catch (e) {
         // Try URL-decoded JSON
         try {
