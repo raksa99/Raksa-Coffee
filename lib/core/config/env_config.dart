@@ -31,5 +31,5 @@ class EnvConfig {
   // ==========================================
   // E-INVOICE HOSTING SETTINGS
   // ==========================================
-  static const String invoiceWebUrl = 'https://snowy-khaki.vercel.app/invoice.html';
+  static const String invoiceWebUrl = 'https://raksa-coffee.vercel.app/invoice.html';
 }
