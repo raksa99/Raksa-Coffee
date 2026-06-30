@@ -31,5 +31,5 @@ class EnvConfig {
   // ==========================================
   // E-INVOICE HOSTING SETTINGS
   // ==========================================
-  static const String invoiceWebUrl = 'https://raksa99.github.io/Raksa-Coffee/web/invoice.html';
+  static const String invoiceWebUrl = 'https://raksa99.github.io/Raksa-Coffee/invoice.html';
 }
